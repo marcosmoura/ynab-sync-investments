@@ -1,34 +1,50 @@
-# 
+# YNAB Investments Sync
 
-<a alt="Nx logo" href="https://nx.dev" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/nrwl/nx/master/images/nx-logo.png" width="45"></a>
+This monorepo contains:
 
-✨ Your new, shiny [Nx workspace](https://nx.dev) is ready ✨.
+- `apps/api`: NestJS backend for syncing investments with YNAB
+- `apps/web`: Frontend placeholder (to be implemented)
 
-[Learn more about this workspace setup and its capabilities](https://nx.dev/getting-started/intro#learn-nx?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects) or run `npx nx graph` to visually explore what was created. Now, let's get you up to speed!
+## Tech Stack
 
-## Run tasks
+- TypeScript
+- NX Monorepo
+- pnpm
+- OXLint
+- Prettier
+- Vitest
+- lint-staged
 
-To run tasks with Nx use:
+## Setup
 
-```sh
-npx nx <target> <project-name>
-```
+1. Install dependencies: `pnpm install`
+2. Run backend: `pnpm nx serve api`
+3. Run frontend: `pnpm nx serve web`
+4. Build backend: `pnpm nx build api`
+5. Build frontend: `pnpm nx build web`
 
-For example:
+## Linting & Formatting
 
-```sh
-npx nx build myproject
-```
+- Run `pnpm prettier --write .` to format
+- Run `pnpm oxlint .` to lint
+- Pre-commit hooks run Prettier and OXLint via lint-staged
 
-These targets are either [inferred automatically](https://nx.dev/concepts/inferred-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) or defined in the `project.json` or `package.json` files.
+## Backend (API)
 
-[More about running tasks in the docs &raquo;](https://nx.dev/features/run-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+The backend is a NestJS application that handles:
 
-## Add new projects
+- Frontend API endpoints
+- Scheduled tasks for syncing with YNAB
 
-While you could add new projects to your workspace manually, you might want to leverage [Nx plugins](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) and their [code generation](https://nx.dev/features/generate-code?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) feature.
+## Frontend (Web)
+
+The frontend will contain:
+
+- Setup screen for YNAB token and sync schedule
+- Dashboard for managing investments
 
 To install a new plugin you can use the `nx add` command. Here's an example of adding the React plugin:
+
 ```sh
 npx nx add @nx/react
 ```
@@ -84,12 +100,13 @@ Nx Console is an editor extension that enriches your developer experience. It le
 
 Learn more:
 
-- [Learn more about this workspace setup](https://nx.dev/getting-started/intro#learn-nx?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects)
+- [Learn more about this workspace setup](https://nx.dev/getting-started/intro#learn-nx?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
 - [Learn about Nx on CI](https://nx.dev/ci/intro/ci-with-nx?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
 - [Releasing Packages with Nx release](https://nx.dev/features/manage-releases?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
 - [What are Nx plugins?](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
 
 And join the Nx community:
+
 - [Discord](https://go.nx.dev/community)
 - [Follow us on X](https://twitter.com/nxdevtools) or [LinkedIn](https://www.linkedin.com/company/nrwl)
 - [Our Youtube channel](https://www.youtube.com/@nxdevtools)

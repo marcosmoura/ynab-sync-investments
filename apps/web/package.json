@@ -1,0 +1,7 @@
+{
+  "name": "@ynab-investments-sync/web",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {},
+  "devDependencies": {}
+}
