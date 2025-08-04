@@ -9,6 +9,7 @@
     "lint": "oxlint --import-plugin --config .oxlint.json .",
     "lint-staged": "lint-staged",
     "lint:fix": "oxlint --import-plugin --config .oxlint.json --fix .",
+    "prepare": "husky",
     "setup": "tsx scripts/setup.ts",
     "typecheck": "nx run-many -t typecheck"
   },
