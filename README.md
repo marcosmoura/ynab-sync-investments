@@ -60,9 +60,9 @@ This is an Nx monorepo containing:
    ```
 
 3. **Access the application**:
-   - API: http://localhost:3000/api
-   - Database Admin: http://localhost:8080
-   - Web App: http://localhost:4200 (when implemented)
+   - API: <http://localhost:3000/api>
+   - Database Admin: <http://localhost:8080>
+   - Web App: <http://localhost:4200> (when implemented)
 
 ## 📋 Prerequisites
 
