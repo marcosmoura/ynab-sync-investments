@@ -1,9 +1,14 @@
 /// <reference types="vitest" />
 import { defineConfig } from 'vitest/config';
+import { resolve } from 'path';
 
 export default defineConfig({
   cacheDir: '../../../node_modules/.vite/apps/api/e2e',
-
+  resolve: {
+    alias: {
+      '@': resolve(__dirname, './src'),
+    },
+  },
   test: {
     globals: true,
     environment: 'node',

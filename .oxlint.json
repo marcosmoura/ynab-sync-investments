@@ -1,12 +1,10 @@
 {
   "extends": ["oxlint:recommended"],
   "rules": {
-    // Path-based import restrictions (combines module boundaries + import order path patterns)
     "import/no-restricted-paths": [
       "error",
       {
         "zones": [
-          // Prevent cross-app imports (similar to module boundaries)
           {
             "target": "./apps/api/**/*",
             "from": "./apps/web/**/*",
@@ -17,15 +15,12 @@
             "from": "./apps/api/**/*",
             "message": "Web app should not import from API - violates module boundaries"
           },
-          // Prevent imports from outside app boundaries
           {
             "target": "./apps/**/*",
             "from": ["./libs/**/*", "./tools/**/*"],
             "except": ["./libs/shared/**/*"],
             "message": "Apps should only import from shared libraries"
           },
-          // Workspace-specific internal package restrictions
-          // (Similar to your @zero-budget/** pattern but workspace-specific)
           {
             "target": "./apps/**/*",
             "from": "./packages/**/*",
@@ -35,7 +30,6 @@
         ]
       }
     ],
-    // Additional import rules available in OXLint (replaces some import/order functionality)
     "import/no-self-import": "error",
     "import/no-cycle": "error",
     "import/no-duplicates": "error"

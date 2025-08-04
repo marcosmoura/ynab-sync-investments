@@ -1,113 +1,223 @@
 # YNAB Investments Sync
 
-This monorepo contains:
+An application that integrates with YNAB API to automatically update investment account balances on a configurable schedule. Self-hosted solution with no login required.
 
-- `apps/api`: NestJS backend for syncing investments with YNAB
-- `apps/web`: Frontend placeholder (to be implemented)
+## 🚀 Features
 
-## Tech Stack
+- **Asset Management**: Add, edit, and delete investment assets (stocks, crypto, bonds, etc.)
+- **YNAB Integration**: Seamless integration with YNAB API for account management
+- **Automated Sync**: Configurable schedules for automatic portfolio synchronization
+- **Real-time Market Data**: Fetch current asset prices from market data providers
+- **Multi-Currency Support**: Automatic currency conversion based on YNAB account settings
+- **Self-Hosted**: No external services required, complete control over your data
 
-- TypeScript
-- NX Monorepo
-- pnpm
-- OXLint
-- Prettier
-- Vitest
-- lint-staged
+## 🏗️ Architecture
 
-## Setup
+This is an Nx monorepo containing:
 
-1. Install dependencies: `pnpm install`
-2. Run backend: `pnpm nx serve api`
-3. Run frontend: `pnpm nx serve web`
-4. Build backend: `pnpm nx build api`
-5. Build frontend: `pnpm nx build web`
+- **`apps/api`**: NestJS backend with REST API and scheduled sync jobs
+- **`apps/web`**: Frontend web application (to be implemented)
+- **`scripts/`**: Development and deployment scripts
 
-## Linting & Formatting
+## 🛠️ Tech Stack
 
-- Run `pnpm prettier --write .` to format
-- Run `pnpm oxlint .` to lint
-- Pre-commit hooks run Prettier and OXLint via lint-staged
+### Backend
 
-## Backend (API)
+- **NestJS**: Node.js framework with TypeScript
+- **TypeORM**: Database ORM with PostgreSQL
+- **Scheduling**: Cron-based automated sync jobs
+- **Validation**: Class-validator for request validation
 
-The backend is a NestJS application that handles:
+### Development
 
-- Frontend API endpoints
-- Scheduled tasks for syncing with YNAB
+- **Nx**: Monorepo management and build system
+- **pnpm**: Fast, efficient package manager
+- **TypeScript**: Type-safe development
+- **Vitest**: Unit and integration testing
+- **OXLint**: Fast linting with oxlint
+- **Prettier**: Code formatting
+- **Docker**: Containerized database for development
 
-## Frontend (Web)
+## 🚀 Quick Start
 
-The frontend will contain:
+1. **Setup the environment**:
 
-- Setup screen for YNAB token and sync schedule
-- Dashboard for managing investments
+   ```bash
+   ./scripts/setup.sh
+   ```
 
-To install a new plugin you can use the `nx add` command. Here's an example of adding the React plugin:
+2. **Start the development environment**:
 
-```sh
-npx nx add @nx/react
+   ```bash
+   # Start database
+   docker-compose up -d postgres
+
+   # Start API server
+   pnpm nx serve api
+
+   # Start web application (when ready)
+   pnpm nx serve web
+   ```
+
+3. **Access the application**:
+   - API: http://localhost:3000/api
+   - Database Admin: http://localhost:8080
+   - Web App: http://localhost:4200 (when implemented)
+
+## 📋 Prerequisites
+
+- **Node.js** (v18 or higher)
+- **pnpm** (package manager)
+- **Docker** (for local database)
+- **YNAB Personal Access Token** ([Get one here](https://app.youneedabudget.com/settings/developer))
+
+## ⚙️ Configuration
+
+Create `apps/api/.env` from the example file:
+
+```bash
+cp apps/api/.env.example apps/api/.env
 ```
 
-Use the plugin's generator to create new projects. For example, to create a new React app or library:
+Update the configuration:
 
-```sh
-# Generate an app
-npx nx g @nx/react:app demo
+- Database connection settings
+- YNAB API token (configured via web interface)
+- Application ports and URLs
 
-# Generate a library
-npx nx g @nx/react:lib some-lib
+## 📱 API Endpoints
+
+### Assets Management
+
+- `GET /api/assets` - List all assets
+- `POST /api/assets` - Create new asset
+- `PATCH /api/assets/:id` - Update asset
+- `DELETE /api/assets/:id` - Delete asset
+
+### User Settings
+
+- `GET /api/settings` - Get user settings
+- `POST /api/settings` - Save user settings
+- `PATCH /api/settings` - Update user settings
+
+### YNAB Integration
+
+- `POST /api/ynab/accounts` - Fetch YNAB accounts
+- `POST /api/ynab/sync` - Trigger manual sync
+
+## 🔄 Sync Schedules
+
+- **Daily**: Every day
+- **Every Two Days**: Every other day
+- **Weekly**: Every Monday
+- **Every Two Weeks**: Every other Monday
+- **Monthly (First)**: First day of each month
+- **Monthly (Last)**: Last day of each month
+
+## 🧪 Development
+
+### Running Tests
+
+```bash
+# Unit tests
+pnpm nx test api
+
+# E2E tests
+pnpm nx e2e api
+
+# Test coverage
+pnpm nx test api --coverage
 ```
 
-You can use `npx nx list` to get a list of installed plugins. Then, run `npx nx list <plugin-name>` to learn about more specific capabilities of a particular plugin. Alternatively, [install Nx Console](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) to browse plugins and generators in your IDE.
+### Linting & Formatting
 
-[Learn more about Nx plugins &raquo;](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) | [Browse the plugin registry &raquo;](https://nx.dev/plugin-registry?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+```bash
+# Format code
+pnpm prettier --write .
 
-## Set up CI!
+# Lint code
+pnpm lint
 
-### Step 1
-
-To connect to Nx Cloud, run the following command:
-
-```sh
-npx nx connect
+# Fix linting issues
+pnpm lint:fix
 ```
 
-Connecting to Nx Cloud ensures a [fast and scalable CI](https://nx.dev/ci/intro/why-nx-cloud?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) pipeline. It includes features such as:
+### Building
 
-- [Remote caching](https://nx.dev/ci/features/remote-cache?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Task distribution across multiple machines](https://nx.dev/ci/features/distribute-task-execution?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Automated e2e test splitting](https://nx.dev/ci/features/split-e2e-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Task flakiness detection and rerunning](https://nx.dev/ci/features/flaky-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+```bash
+# Build API
+pnpm nx build api
 
-### Step 2
-
-Use the following command to configure a CI workflow for your workspace:
-
-```sh
-npx nx g ci-workflow
+# Build all apps
+pnpm build
 ```
 
-[Learn more about Nx on CI](https://nx.dev/ci/intro/ci-with-nx#ready-get-started-with-your-provider?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+## 🐳 Docker Development
 
-## Install Nx Console
+The project includes Docker Compose for local development:
 
-Nx Console is an editor extension that enriches your developer experience. It lets you run tasks, generate code, and improves code autocompletion in your IDE. It is available for VSCode and IntelliJ.
+```bash
+# Start all services
+docker-compose up -d
 
-[Install Nx Console &raquo;](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+# Start only database
+docker-compose up -d postgres
 
-## Useful links
+# View logs
+docker-compose logs -f
 
-Learn more:
+# Stop services
+docker-compose down
+```
 
-- [Learn more about this workspace setup](https://nx.dev/getting-started/intro#learn-nx?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Learn about Nx on CI](https://nx.dev/ci/intro/ci-with-nx?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Releasing Packages with Nx release](https://nx.dev/features/manage-releases?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [What are Nx plugins?](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+## 🔒 Security Notes
 
-And join the Nx community:
+- YNAB API tokens are stored encrypted in the database
+- All API communication uses HTTPS in production
+- Database credentials should be secured in production
+- Consider using environment-specific configuration files
 
-- [Discord](https://go.nx.dev/community)
-- [Follow us on X](https://twitter.com/nxdevtools) or [LinkedIn](https://www.linkedin.com/company/nrwl)
-- [Our Youtube channel](https://www.youtube.com/@nxdevtools)
-- [Our blog](https://nx.dev/blog?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+## 🗃️ Database Schema
+
+The application uses PostgreSQL with the following main entities:
+
+- **Assets**: Investment assets with symbol, amount, and YNAB account mapping
+- **UserSettings**: Application configuration including YNAB token and sync schedule
+
+## 🚀 Deployment
+
+### Environment Setup
+
+1. Set up PostgreSQL database
+2. Configure environment variables
+3. Set up reverse proxy (nginx recommended)
+4. Configure SSL certificates
+
+### Production Deployment
+
+```bash
+# Build for production
+pnpm nx build api --configuration=production
+
+# Start production server
+npm start
+```
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests for new functionality
+5. Ensure all tests pass
+6. Submit a pull request
+
+## 📝 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## 🙏 Acknowledgments
+
+- [YNAB API](https://api.youneedabudget.com/) for the excellent personal finance API
+- [NestJS](https://nestjs.com/) for the robust Node.js framework
+- [Nx](https://nx.dev/) for monorepo management

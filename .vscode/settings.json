@@ -2,5 +2,6 @@
   "chat.agent.maxRequests": 999999,
   "npm.packageManager": "pnpm",
   "nxConsole.generateAiAgentRules": true,
+  "oxc.enable": true,
   "typescript.tsdk": "node_modules/typescript/lib"
 }
