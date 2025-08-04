@@ -65,6 +65,37 @@
         "cwd": "apps/api",
         "command": "tsc --noEmit -p tsconfig.app.json"
       }
+    },
+
+    "migration:generate": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm exec typeorm migration:generate apps/api/src/shared/migrations/Migration -d apps/api/typeorm.config.ts"
+      }
+    },
+    "migration:run": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm exec typeorm migration:run -d apps/api/typeorm.config.ts"
+      }
+    },
+    "migration:revert": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm exec typeorm migration:revert -d apps/api/typeorm.config.ts"
+      }
+    },
+    "migration:create": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm exec typeorm migration:create apps/api/src/shared/migrations/Migration"
+      }
+    },
+    "migration:show": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pnpm exec typeorm migration:show -d apps/api/typeorm.config.ts"
+      }
     }
   }
 }

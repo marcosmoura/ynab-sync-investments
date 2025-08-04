@@ -179,10 +179,30 @@ docker-compose down
 
 ## 🗃️ Database Schema
 
-The application uses PostgreSQL with the following main entities:
+The application uses PostgreSQL with TypeORM migrations for better maintainability:
 
 - **Assets**: Investment assets with symbol, amount, and YNAB account mapping
 - **UserSettings**: Application configuration including YNAB token and sync schedule
+
+### Migration Management
+
+The project uses TypeORM migrations instead of auto-synchronization for production safety:
+
+```bash
+# Run database migrations
+nx run api:migration:run
+
+# Generate new migration after entity changes
+nx run api:migration:generate
+
+# Create blank migration
+nx run api:migration:create
+
+# Revert last migration
+nx run api:migration:revert
+```
+
+For detailed migration documentation, see [DATABASE_MIGRATIONS.md](docs/DATABASE_MIGRATIONS.md).
 
 ## 🚀 Deployment
 

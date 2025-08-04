@@ -1,5 +1,8 @@
 {
   "name": "@ynab-investments-sync/api",
   "version": "0.1.0",
-  "private": true
+  "private": true,
+  "devDependencies": {
+    "tsconfig-paths": "^4.2.0"
+  }
 }

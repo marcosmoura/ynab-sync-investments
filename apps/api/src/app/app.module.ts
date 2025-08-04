@@ -30,7 +30,10 @@ import { AppService } from './services';
         password: configService.get('DB_PASSWORD', 'password'),
         database: configService.get('DB_NAME', 'ynab_investments'),
         entities: [Asset, UserSettings],
-        synchronize: configService.get('NODE_ENV') !== 'production', // Only in development
+        migrations: [__dirname + '/../shared/migrations/*{.ts,.js}'],
+        migrationsTableName: 'migrations',
+        migrationsRun: true, // Auto-run migrations on startup
+        synchronize: false, // Never use synchronize in production
         logging: configService.get('NODE_ENV') === 'development',
       }),
       inject: [ConfigService],
