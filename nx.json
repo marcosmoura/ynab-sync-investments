@@ -5,6 +5,9 @@
     "production": ["default", "!{projectRoot}/**/?(*.)+(spec|test|e2e).[jt]s?(x)?(.snap)"],
     "sharedGlobals": []
   },
+  "tui": {
+    "enabled": false
+  },
   "plugins": [
     {
       "plugin": "@nx/vite/plugin",
@@ -33,6 +36,13 @@
       "linter": "eslint",
       "unitTestRunner": "vitest",
       "e2eTestRunner": "playwright"
+    }
+  },
+  "targetDefaults": {
+    "@nx/esbuild:esbuild": {
+      "cache": true,
+      "dependsOn": ["^build"],
+      "inputs": ["production", "^production"]
     }
   }
 }

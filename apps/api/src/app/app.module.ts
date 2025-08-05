@@ -4,6 +4,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { AssetModule } from '@/asset';
+import { Asset, UserSettings } from '@/database/entities';
 import { DocumentationModule } from '@/documentation';
 import { MarketDataModule } from '@/market-data';
 import { SyncModule } from '@/sync';
@@ -29,8 +30,8 @@ import { AppService } from './app.service';
         username: configService.get('DB_USERNAME', 'postgres'),
         password: configService.get('DB_PASSWORD', 'password'),
         database: configService.get('DB_NAME', 'ynab_investments'),
-        entities: ['./database/entities/*.{js,ts}'],
-        migrations: ['./database/migrations/*.{js,ts}'],
+        entities: [Asset, UserSettings],
+        migrations: ['./database/migrations/*.ts'],
         migrationsTableName: 'migrations',
         migrationsRun: true, // Auto-run migrations on startup
         synchronize: false, // Never use synchronize in production

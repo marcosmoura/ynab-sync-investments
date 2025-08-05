@@ -74,6 +74,138 @@ export class YnabController {
     return this.ynabService.getAccounts(body.token, body.budgetId);
   }
 
+  @Post('accounts/update-balance')
+  @ApiOperation({ summary: 'Update YNAB account balance' })
+  @ApiBody({
+    description: 'YNAB API token, account ID, and new balance',
+    schema: {
+      type: 'object',
+      properties: {
+        token: {
+          type: 'string',
+          example: 'ynab-api-token-12345678901234567890123456789012',
+          description: 'YNAB API token',
+        },
+        accountId: {
+          type: 'string',
+          example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+          description: 'YNAB account ID',
+        },
+        balance: {
+          type: 'number',
+          example: 1500.5,
+          description: 'New account balance',
+        },
+        budgetId: {
+          type: 'string',
+          example: 'b1c2d3e4-f5g6-7890-bcde-fg1234567890',
+          description: 'Optional budget ID. If not provided, uses the first budget.',
+        },
+      },
+      required: ['token', 'accountId', 'balance'],
+    },
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Account balance updated successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        message: {
+          type: 'string',
+          example: 'Account balance updated successfully',
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 400, description: 'Invalid parameters or YNAB API token' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - invalid token' })
+  async updateAccountBalance(
+    @Body() body: { token: string; accountId: string; balance: number; budgetId?: string },
+  ): Promise<{ message: string }> {
+    await this.ynabService.updateAccountBalance(
+      body.token,
+      body.accountId,
+      body.balance,
+      body.budgetId,
+    );
+    return { message: 'Account balance updated successfully' };
+  }
+
+  @Post('accounts/reconcile-balance')
+  @ApiOperation({ summary: 'Reconcile YNAB account balance' })
+  @ApiBody({
+    description: 'YNAB API token, account ID, target balance, and optional asset symbols',
+    schema: {
+      type: 'object',
+      properties: {
+        token: {
+          type: 'string',
+          example: 'ynab-api-token-12345678901234567890123456789012',
+          description: 'YNAB API token',
+        },
+        accountId: {
+          type: 'string',
+          example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+          description: 'YNAB account ID',
+        },
+        targetBalance: {
+          type: 'number',
+          example: 1500.5,
+          description: 'Target account balance',
+        },
+        budgetId: {
+          type: 'string',
+          example: 'b1c2d3e4-f5g6-7890-bcde-fg1234567890',
+          description: 'Optional budget ID. If not provided, uses the first budget.',
+        },
+        assetSymbols: {
+          type: 'array',
+          items: {
+            type: 'string',
+          },
+          example: ['AAPL', 'MSFT', 'GOOGL'],
+          description: 'Optional array of asset symbols for transaction memo',
+        },
+      },
+      required: ['token', 'accountId', 'targetBalance'],
+    },
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Account balance reconciled successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        message: {
+          type: 'string',
+          example: 'Account balance reconciled successfully',
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 400, description: 'Invalid parameters or YNAB API token' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - invalid token' })
+  async reconcileAccountBalance(
+    @Body()
+    body: {
+      token: string;
+      accountId: string;
+      targetBalance: number;
+      budgetId?: string;
+      assetSymbols?: string[];
+    },
+  ): Promise<{ message: string }> {
+    await this.ynabService.reconcileAccountBalance(
+      body.token,
+      body.accountId,
+      body.targetBalance,
+      body.budgetId,
+      body.assetSymbols,
+    );
+    return { message: 'Account balance reconciled successfully' };
+  }
+
   @Post('sync')
   @ApiOperation({ summary: 'Trigger manual synchronization' })
   @ApiResponse({

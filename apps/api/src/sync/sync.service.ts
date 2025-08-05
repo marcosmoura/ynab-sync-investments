@@ -102,11 +102,13 @@ export class SyncService {
 
         // Reconcile YNAB account balance with calculated portfolio value
         if (totalValue > 0) {
+          const assetSymbols = accountAssets.map((asset) => asset.symbol);
           await this.ynabService.reconcileAccountBalance(
             userSettings.ynabApiToken,
             accountId,
             totalValue,
             userSettings.targetBudgetId,
+            assetSymbols,
           );
 
           this.logger.log(

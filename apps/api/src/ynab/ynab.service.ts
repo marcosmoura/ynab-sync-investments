@@ -164,6 +164,7 @@ export class YnabService {
     accountId: string,
     targetBalance: number,
     budgetId?: string,
+    assetSymbols?: string[],
   ): Promise<void> {
     try {
       this.setAuthHeader(token);
@@ -201,12 +202,18 @@ export class YnabService {
 
       const reconciliationAmountInMilliunits = Math.round(reconciliationAmount * 1000);
 
-      // Create a reconciliation transaction for the difference
+      // Create a comprehensive memo with current balance, target balance, adjustment amount, and asset symbols
+      const sign = reconciliationAmount > 0 ? '+' : '';
+      const adjustmentDisplay = `${sign}${reconciliationAmount.toFixed(2)}`;
+      const balanceInfo = `Current: ${currentBalance.toFixed(2)} → Target: ${targetBalance.toFixed(2)}`;
+      const assetInfo = assetSymbols?.length > 0 ? ` (${assetSymbols?.join(', ')})` : '';
+      const memo = `${adjustmentDisplay} | ${balanceInfo}${assetInfo}`;
+
       const transaction = {
         account_id: accountId,
         amount: reconciliationAmountInMilliunits,
         payee_name: 'Investment Portfolio Reconciliation',
-        memo: `Reconciliation: ${reconciliationAmount >= 0 ? '+' : ''}${reconciliationAmount.toFixed(2)} (Current: ${currentBalance.toFixed(2)} → Target: ${targetBalance.toFixed(2)})`,
+        memo,
         cleared: 'cleared',
         approved: true,
         date: new Date().toISOString().split('T')[0], // Today's date in YYYY-MM-DD format

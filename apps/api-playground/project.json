@@ -1,0 +1,54 @@
+{
+  "name": "api-playground",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/api-playground/src",
+  "projectType": "application",
+  "targets": {
+    "build": {
+      "executor": "@nx/vite:build",
+      "options": {
+        "outputPath": "dist/apps/api-playground",
+        "configFile": "apps/api-playground/vite.config.ts"
+      },
+      "configurations": {
+        "development": {
+          "mode": "development"
+        },
+        "production": {
+          "mode": "production"
+        }
+      }
+    },
+    "serve": {
+      "continuous": true,
+      "executor": "@nx/js:node",
+      "defaultConfiguration": "development",
+      "dependsOn": ["build"],
+      "options": {
+        "buildTarget": "api-playground:build",
+        "runBuildTargetDependencies": false
+      },
+      "configurations": {
+        "development": {
+          "buildTarget": "api-playground:build:development"
+        },
+        "production": {
+          "buildTarget": "api-playground:build:production"
+        }
+      }
+    },
+    "run": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["build"],
+      "options": {
+        "command": "tsx apps/api-playground/scripts/run-playground.ts"
+      }
+    },
+    "healthcheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsx apps/api-playground/scripts/check-setup.ts"
+      }
+    }
+  }
+}

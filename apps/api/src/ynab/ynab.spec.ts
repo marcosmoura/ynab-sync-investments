@@ -20,6 +20,8 @@ describe('YnabController', () => {
           provide: YnabService,
           useValue: {
             getAccounts: vi.fn(),
+            updateAccountBalance: vi.fn(),
+            reconcileAccountBalance: vi.fn(),
           },
         },
         {
@@ -83,6 +85,126 @@ describe('YnabController', () => {
       expect(ynabService.getAccounts).toHaveBeenCalledWith('test-token', undefined);
       expect(result).toEqual([]);
       expect(result).toHaveLength(0);
+    });
+  });
+
+  describe('updateAccountBalance', () => {
+    it('should update account balance successfully', async () => {
+      vi.spyOn(ynabService, 'updateAccountBalance').mockResolvedValue(undefined);
+
+      const result = await controller.updateAccountBalance({
+        token: 'test-token',
+        accountId: 'test-account-id',
+        balance: 1500.5,
+        budgetId: 'test-budget-id',
+      });
+
+      expect(ynabService.updateAccountBalance).toHaveBeenCalledWith(
+        'test-token',
+        'test-account-id',
+        1500.5,
+        'test-budget-id',
+      );
+      expect(result).toEqual({ message: 'Account balance updated successfully' });
+    });
+
+    it('should update account balance without budget ID', async () => {
+      vi.spyOn(ynabService, 'updateAccountBalance').mockResolvedValue(undefined);
+
+      const result = await controller.updateAccountBalance({
+        token: 'test-token',
+        accountId: 'test-account-id',
+        balance: 1500.5,
+      });
+
+      expect(ynabService.updateAccountBalance).toHaveBeenCalledWith(
+        'test-token',
+        'test-account-id',
+        1500.5,
+        undefined,
+      );
+      expect(result).toEqual({ message: 'Account balance updated successfully' });
+    });
+
+    it('should handle update account balance errors', async () => {
+      vi.spyOn(ynabService, 'updateAccountBalance').mockRejectedValue(new Error('Update failed'));
+
+      await expect(
+        controller.updateAccountBalance({
+          token: 'test-token',
+          accountId: 'test-account-id',
+          balance: 1500.5,
+        }),
+      ).rejects.toThrow('Update failed');
+      expect(ynabService.updateAccountBalance).toHaveBeenCalledWith(
+        'test-token',
+        'test-account-id',
+        1500.5,
+        undefined,
+      );
+    });
+  });
+
+  describe('reconcileAccountBalance', () => {
+    it('should reconcile account balance successfully', async () => {
+      vi.spyOn(ynabService, 'reconcileAccountBalance').mockResolvedValue(undefined);
+
+      const result = await controller.reconcileAccountBalance({
+        token: 'test-token',
+        accountId: 'test-account-id',
+        targetBalance: 1500.5,
+        budgetId: 'test-budget-id',
+        assetSymbols: ['AAPL', 'MSFT'],
+      });
+
+      expect(ynabService.reconcileAccountBalance).toHaveBeenCalledWith(
+        'test-token',
+        'test-account-id',
+        1500.5,
+        'test-budget-id',
+        ['AAPL', 'MSFT'],
+      );
+      expect(result).toEqual({ message: 'Account balance reconciled successfully' });
+    });
+
+    it('should reconcile account balance without optional parameters', async () => {
+      vi.spyOn(ynabService, 'reconcileAccountBalance').mockResolvedValue(undefined);
+
+      const result = await controller.reconcileAccountBalance({
+        token: 'test-token',
+        accountId: 'test-account-id',
+        targetBalance: 1500.5,
+      });
+
+      expect(ynabService.reconcileAccountBalance).toHaveBeenCalledWith(
+        'test-token',
+        'test-account-id',
+        1500.5,
+        undefined,
+        undefined,
+      );
+      expect(result).toEqual({ message: 'Account balance reconciled successfully' });
+    });
+
+    it('should handle reconcile account balance errors', async () => {
+      vi.spyOn(ynabService, 'reconcileAccountBalance').mockRejectedValue(
+        new Error('Reconciliation failed'),
+      );
+
+      await expect(
+        controller.reconcileAccountBalance({
+          token: 'test-token',
+          accountId: 'test-account-id',
+          targetBalance: 1500.5,
+        }),
+      ).rejects.toThrow('Reconciliation failed');
+      expect(ynabService.reconcileAccountBalance).toHaveBeenCalledWith(
+        'test-token',
+        'test-account-id',
+        1500.5,
+        undefined,
+        undefined,
+      );
     });
   });
 

@@ -4,6 +4,6 @@
   "private": true,
   "devDependencies": {
     "@playwright/test": "^1.54.2",
-    "vite": "^6.0.0"
+    "vite": "^7.0.6"
   }
 }

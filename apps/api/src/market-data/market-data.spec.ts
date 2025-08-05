@@ -180,10 +180,13 @@ describe('MarketDataService', () => {
         },
       };
 
-      vi.mocked(global.fetch).mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(mockResponse),
-      } as Response);
+      // First call will fail for crypto (CoinGecko search), second call succeeds for stock
+      vi.mocked(global.fetch)
+        .mockRejectedValueOnce(new Error('Not found in crypto'))
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockResponse),
+        } as Response);
 
       // Mock environment variable
       process.env.ALPHA_VANTAGE_API_KEY = 'test-key';
@@ -198,16 +201,26 @@ describe('MarketDataService', () => {
     });
 
     it('should return price for crypto symbols with CoinGecko API', async () => {
-      const mockResponse = {
+      const mockSearchResponse = {
+        coins: [{ id: 'bitcoin', symbol: 'btc', name: 'Bitcoin' }],
+      };
+
+      const mockPriceResponse = {
         bitcoin: {
           usd: 45000.0,
         },
       };
 
-      vi.mocked(global.fetch).mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(mockResponse),
-      } as Response);
+      // First call succeeds for crypto search, second call gets the price
+      vi.mocked(global.fetch)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockSearchResponse),
+        } as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockPriceResponse),
+        } as Response);
 
       const result = await service.getAssetPrice('BTC', 'USD');
 
@@ -219,19 +232,21 @@ describe('MarketDataService', () => {
     });
 
     it('should fallback to mock prices when API fails', async () => {
-      vi.mocked(global.fetch).mockRejectedValueOnce(new Error('API Error'));
+      // Both crypto and stock API calls fail
+      vi.mocked(global.fetch)
+        .mockRejectedValueOnce(new Error('Crypto API Error'))
+        .mockRejectedValueOnce(new Error('Stock API Error'));
 
-      const result = await service.getAssetPrice('AAPL', 'USD');
-
-      expect(result).toEqual({
-        symbol: 'AAPL',
-        price: 150.0, // Fallback price
-        currency: 'USD',
-      });
+      await expect(service.getAssetPrice('AAPL', 'USD')).rejects.toThrow(
+        'Failed to fetch price for AAPL',
+      );
     });
 
     it('should throw error for unknown symbols when API fails and no fallback exists', async () => {
-      vi.mocked(global.fetch).mockRejectedValueOnce(new Error('API Error'));
+      // Both crypto and stock API calls fail
+      vi.mocked(global.fetch)
+        .mockRejectedValueOnce(new Error('Crypto API Error'))
+        .mockRejectedValueOnce(new Error('Stock API Error'));
 
       await expect(service.getAssetPrice('UNKNOWN', 'USD')).rejects.toThrow(
         'Failed to fetch price for UNKNOWN',
@@ -245,10 +260,13 @@ describe('MarketDataService', () => {
         },
       };
 
-      vi.mocked(global.fetch).mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(mockResponse),
-      } as Response);
+      // First call fails for crypto, second call succeeds for stock
+      vi.mocked(global.fetch)
+        .mockRejectedValueOnce(new Error('Not found in crypto'))
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockResponse),
+        } as Response);
 
       process.env.ALPHA_VANTAGE_API_KEY = 'test-key';
 
@@ -274,7 +292,9 @@ describe('MarketDataService', () => {
         },
       };
 
+      // First call fails for crypto, second call succeeds for stock, third call is currency conversion
       vi.mocked(global.fetch)
+        .mockRejectedValueOnce(new Error('Not found in crypto'))
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve(mockStockResponse),
@@ -302,7 +322,9 @@ describe('MarketDataService', () => {
         },
       };
 
+      // First call fails for crypto, second call succeeds for stock, third call fails for currency conversion
       vi.mocked(global.fetch)
+        .mockRejectedValueOnce(new Error('Not found in crypto'))
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve(mockStockResponse),

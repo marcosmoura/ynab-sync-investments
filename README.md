@@ -16,6 +16,7 @@ An application that integrates with YNAB API to automatically update investment 
 This is an Nx monorepo containing:
 
 - **`apps/api`**: NestJS backend with REST API and scheduled sync jobs
+- **`apps/api-playground`**: Comprehensive testing application for the API
 - **`apps/web`**: Frontend web application (to be implemented)
 - **`scripts/`**: Development and deployment scripts
 
@@ -128,6 +129,26 @@ pnpm nx e2e api
 # Test coverage
 pnpm nx test api --coverage
 ```
+
+### API Playground
+
+The project includes a comprehensive testing application that simulates real-world usage scenarios:
+
+```bash
+# Configure YNAB credentials in apps/api/.env
+# Then run the playground
+pnpm nx run api-playground:run-playground
+```
+
+The playground tests:
+
+- User settings management
+- YNAB API integration
+- Asset management (crypto & investments)
+- Sync process execution
+- Result validation
+
+See [apps/api-playground/README.md](apps/api-playground/README.md) for detailed setup instructions.
 
 ### Linting & Formatting
 

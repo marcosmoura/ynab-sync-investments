@@ -20,6 +20,7 @@
       }
     },
     "serve": {
+      "continuous": true,
       "executor": "@nx/js:node",
       "defaultConfiguration": "development",
       "dependsOn": ["build"],

@@ -31,6 +31,7 @@
     "swc-loader": "0.2.6",
     "tsconfig-paths": "^4.2.0",
     "unplugin-swc": "^1.5.5",
+    "vite": "^7.0.6",
     "vitest": "^3.2.4"
   }
 }

@@ -192,12 +192,14 @@ describe('SyncService', () => {
         'account-1',
         3000, // AAPL: 10 * 150 + MSFT: 5 * 300 = 1500 + 1500 = 3000
         null,
+        ['AAPL', 'MSFT'],
       );
       expect(mockYnabService.reconcileAccountBalance).toHaveBeenCalledWith(
         'test-token',
         'account-2',
         20000, // BTC: 0.5 * 40000 = 20000
         null,
+        ['BTC'],
       );
     });
 

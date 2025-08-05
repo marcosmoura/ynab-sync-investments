@@ -154,7 +154,7 @@ class DatabaseManager {
    */
   async migrate() {
     console.log('🔄 Running database migrations...');
-    this.execCommand('pnpm exec typeorm migration:run -d apps/api/typeorm.config.ts');
+    this.execCommand('pnpm nx run api:migration:run');
     console.log('✅ Migrations completed successfully');
   }
 
@@ -164,17 +164,19 @@ class DatabaseManager {
   async reset() {
     console.log('🗑️  Resetting database...');
 
-    console.log('1/4 Stopping database...');
-    this.execCommand(`docker-compose stop ${COMPOSE_SERVICE}`);
+    console.log('1/5 Stopping all services...');
+    this.execCommand('docker-compose down');
 
-    console.log('2/4 Removing database container and volumes...');
-    this.execCommand(`docker-compose rm -f ${COMPOSE_SERVICE}`);
-    this.execCommand('docker volume rm ynab-investments-sync_postgres_data || true');
+    console.log('2/5 Removing all containers and volumes...');
+    this.execCommand('docker-compose down --volumes --remove-orphans');
 
-    console.log('3/4 Creating fresh database...');
+    console.log('3/5 Pruning Docker resources...');
+    this.execCommand('docker volume prune -f');
+
+    console.log('4/5 Creating fresh database...');
     await this.create();
 
-    console.log('4/4 Running migrations...');
+    console.log('5/5 Running migrations...');
     await this.migrate();
 
     console.log('\n✅ Database reset completed successfully');
