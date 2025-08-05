@@ -3,7 +3,6 @@
   "npm.packageManager": "pnpm",
   "nxConsole.generateAiAgentRules": true,
   "oxc.enable": true,
-  "prettier.configPath": "prettier.config.ts",
   "prettier.enable": true,
   "typescript.tsdk": "node_modules/typescript/lib"
 }

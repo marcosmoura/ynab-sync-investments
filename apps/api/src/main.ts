@@ -2,6 +2,7 @@ import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 
 import { AppModule } from './app/app.module';
+import { DocumentationService } from './documentation/documentation.service';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -23,11 +24,14 @@ async function bootstrap() {
     }),
   );
 
+  await app.get(DocumentationService).generateDocumentation(app);
+
   app.setGlobalPrefix(globalPrefix);
 
   await app.listen(port);
 
   Logger.log(`🚀 Application is running on: http://localhost:${port}/${globalPrefix}`);
+  Logger.log(`📚 API Documentation is available at: http://localhost:${port}/api/docs`);
 }
 
 bootstrap();

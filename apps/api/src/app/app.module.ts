@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { INestApplication, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -6,6 +6,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { Asset, UserSettings } from '@/shared/entities';
 import * as migrations from '@/shared/migrations';
 import { AssetModule } from '@/asset';
+import { DocumentationModule } from '@/documentation';
 import { MarketDataModule } from '@/market-data';
 import { SyncModule } from '@/sync';
 import { UserSettingsModule } from '@/user-settings';
@@ -40,6 +41,7 @@ import { AppService } from './app.service';
       inject: [ConfigService],
     }),
     AssetModule,
+    DocumentationModule,
     MarketDataModule,
     SyncModule,
     UserSettingsModule,
@@ -48,4 +50,10 @@ import { AppService } from './app.service';
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule {
+  public app: INestApplication;
+
+  public setApp(app: INestApplication) {
+    this.app = app;
+  }
+}
