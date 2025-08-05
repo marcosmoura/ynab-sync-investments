@@ -11,9 +11,6 @@ export default [
   },
   {
     files: ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx'],
-    plugins: {
-      oxlint,
-    },
     rules: {
       ...oxlint.configs.recommended.rules,
       '@nx/enforce-module-boundaries': [
@@ -82,4 +79,7 @@ export default [
       ],
     },
   },
+  ...oxlint.configs['flat/recommended'],
+  ...oxlint.configs['flat/correctness'],
+  ...oxlint.configs['flat/perf'],
 ];

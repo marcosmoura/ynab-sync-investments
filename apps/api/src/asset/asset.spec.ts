@@ -4,7 +4,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-import { Asset } from '@/shared/entities';
+import { Asset } from '@/database/entities';
 
 import { AssetController } from './asset.controller';
 import { AssetService } from './asset.service';

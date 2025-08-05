@@ -3,7 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
-import { SyncSchedule } from '@/shared/entities';
+import { SyncSchedule } from '@/database/entities';
 import { YnabService } from '@/ynab/ynab.service';
 
 import { UserSettingsController } from './user-settings.controller';

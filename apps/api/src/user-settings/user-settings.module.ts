@@ -1,7 +1,7 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { UserSettings } from '@/shared/entities';
+import { UserSettings } from '@/database/entities';
 import { YnabModule } from '@/ynab/ynab.module';
 
 import { UserSettingsController } from './user-settings.controller';

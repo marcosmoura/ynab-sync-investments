@@ -2,8 +2,8 @@ import { Test } from '@nestjs/testing';
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 
 import { AssetService } from '@/asset/asset.service';
+import { SyncSchedule } from '@/database/entities';
 import { MarketDataService } from '@/market-data/market-data.service';
-import { SyncSchedule } from '@/shared/entities';
 import { UserSettingsResponseDto } from '@/user-settings/dto';
 import { UserSettingsService } from '@/user-settings/user-settings.service';
 import { YnabService } from '@/ynab/ynab.service';

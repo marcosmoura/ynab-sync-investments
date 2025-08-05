@@ -59,11 +59,10 @@
         "command": "tsc --noEmit -p tsconfig.app.json"
       }
     },
-
     "migration:generate": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "typeorm-ts-node-commonjs migration:generate -d typeorm.config.ts",
+        "command": "npx typeorm-ts-node-commonjs migration:generate -d typeorm.config.ts",
         "cwd": "apps/api",
         "env": {
           "TS_NODE_PROJECT": "tsconfig.app.json",
@@ -74,7 +73,7 @@
     "migration:run": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "typeorm-ts-node-commonjs migration:run -d typeorm.config.ts",
+        "command": "npx typeorm-ts-node-commonjs migration:run -d typeorm.config.ts",
         "cwd": "apps/api",
         "env": {
           "TS_NODE_PROJECT": "tsconfig.app.json",
@@ -85,7 +84,7 @@
     "migration:revert": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "typeorm-ts-node-commonjs migration:revert -d typeorm.config.ts",
+        "command": "npx typeorm-ts-node-commonjs migration:revert -d typeorm.config.ts",
         "cwd": "apps/api",
         "env": {
           "TS_NODE_PROJECT": "tsconfig.app.json",
@@ -96,7 +95,7 @@
     "migration:create": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "typeorm-ts-node-commonjs migration:create",
+        "command": "npx typeorm-ts-node-commonjs migration:create",
         "cwd": "apps/api",
         "env": {
           "TS_NODE_PROJECT": "tsconfig.app.json",
@@ -107,7 +106,7 @@
     "migration:show": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "typeorm-ts-node-commonjs migration:show -d typeorm.config.ts",
+        "command": "npx typeorm-ts-node-commonjs migration:show -d typeorm.config.ts",
         "cwd": "apps/api",
         "env": {
           "TS_NODE_PROJECT": "tsconfig.app.json",

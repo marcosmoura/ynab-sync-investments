@@ -5,7 +5,7 @@ import request from 'supertest';
 import { Repository } from 'typeorm';
 import { describe, it, expect, beforeEach, afterAll, vi } from 'vitest';
 
-import { Asset } from '@/shared/entities';
+import { Asset } from '@/database/entities';
 
 import { AssetModule } from './asset.module';
 

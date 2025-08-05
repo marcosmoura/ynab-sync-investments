@@ -2,8 +2,8 @@ import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
 import { AssetService } from '@/asset/asset.service';
+import { SyncSchedule } from '@/database/entities';
 import { MarketDataService } from '@/market-data/market-data.service';
-import { SyncSchedule } from '@/shared/entities';
 import { UserSettingsResponseDto } from '@/user-settings/dto';
 import { UserSettingsService } from '@/user-settings/user-settings.service';
 import { YnabService } from '@/ynab/ynab.service';

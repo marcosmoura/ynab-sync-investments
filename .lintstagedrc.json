@@ -1,8 +1,4 @@
 {
-  "*.{js,ts,tsx,jsx,json,css,md}": [
-    "prettier --write",
-    "oxlint --config .oxlint.json --import-plugin --fix",
-    "eslint --fix"
-  ],
+  "*.{js,ts,tsx,jsx,json,css,md}": ["prettier --write", "oxlint --fix", "eslint --fix"],
   "*.{ts,tsx}": ["pnpm typecheck"]
 }

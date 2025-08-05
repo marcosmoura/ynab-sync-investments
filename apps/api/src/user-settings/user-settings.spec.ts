@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
-import { UserSettings, SyncSchedule } from '@/shared/entities';
+import { UserSettings, SyncSchedule } from '@/database/entities';
 
 import { CreateUserSettingsDto, UpdateUserSettingsDto } from './dto';
 import { UserSettingsService } from './user-settings.service';

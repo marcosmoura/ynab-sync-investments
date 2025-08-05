@@ -7,9 +7,9 @@
   "scripts": {
     "db": "tsx scripts/db.ts",
     "healthcheck": "tsx scripts/health-check.ts",
-    "lint": "oxlint --import-plugin --config .oxlint.json . && eslint .",
+    "lint": "oxlint . && eslint .",
     "lint-staged": "lint-staged",
-    "lint:fix": "oxlint --import-plugin --config .oxlint.json --fix . && eslint --fix .",
+    "lint:fix": "oxlint --fix . && eslint --fix .",
     "prepare": "husky",
     "setup": "tsx scripts/setup.ts",
     "typecheck": "nx run-many -t typecheck"
