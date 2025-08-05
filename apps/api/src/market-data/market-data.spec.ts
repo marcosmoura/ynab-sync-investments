@@ -139,59 +139,142 @@ describe('MarketDataService', () => {
   });
 
   describe('getAssetPrice', () => {
-    it('should return mock price for stock symbols', async () => {
+    beforeEach(() => {
+      // Mock the fetch method to avoid real API calls in tests
+      global.fetch = vi.fn() as unknown as typeof fetch;
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('should return price for stock symbols with Alpha Vantage API', async () => {
+      const mockResponse = {
+        'Global Quote': {
+          '05. price': '150.00',
+        },
+      };
+
+      vi.mocked(global.fetch).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      } as Response);
+
+      // Mock environment variable
+      process.env.ALPHA_VANTAGE_API_KEY = 'test-key';
+
       const result = await service.getAssetPrice('AAPL', 'USD');
 
       expect(result).toEqual({
         symbol: 'AAPL',
-        price: 100.0, // The getCryptoPrice/getStockPrice methods return 100.0
+        price: 150.0,
         currency: 'USD',
       });
     });
 
-    it('should return mock price for unknown symbols', async () => {
-      const result = await service.getAssetPrice('UNKNOWN', 'USD');
+    it('should return price for crypto symbols with CoinGecko API', async () => {
+      const mockResponse = {
+        bitcoin: {
+          usd: 45000.0,
+        },
+      };
 
-      expect(result).toEqual({
-        symbol: 'UNKNOWN',
-        price: 100.0,
-        currency: 'USD',
-      });
-    });
+      vi.mocked(global.fetch).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      } as Response);
 
-    it('should return mock price for crypto symbols', async () => {
       const result = await service.getAssetPrice('BTC', 'USD');
 
       expect(result).toEqual({
         symbol: 'BTC',
-        price: 100.0, // The getCryptoPrice method returns 100.0
+        price: 45000.0,
         currency: 'USD',
       });
     });
 
+    it('should fallback to mock prices when API fails', async () => {
+      vi.mocked(global.fetch).mockRejectedValueOnce(new Error('API Error'));
+
+      const result = await service.getAssetPrice('AAPL', 'USD');
+
+      expect(result).toEqual({
+        symbol: 'AAPL',
+        price: 150.0, // Fallback price
+        currency: 'USD',
+      });
+    });
+
+    it('should throw error for unknown symbols when API fails and no fallback exists', async () => {
+      vi.mocked(global.fetch).mockRejectedValueOnce(new Error('API Error'));
+
+      await expect(service.getAssetPrice('UNKNOWN', 'USD')).rejects.toThrow(
+        'Failed to fetch price for UNKNOWN',
+      );
+    });
+
     it('should use default currency when not specified', async () => {
+      const mockResponse = {
+        'Global Quote': {
+          '05. price': '300.00',
+        },
+      };
+
+      vi.mocked(global.fetch).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      } as Response);
+
+      process.env.ALPHA_VANTAGE_API_KEY = 'test-key';
+
       const result = await service.getAssetPrice('MSFT');
 
       expect(result).toEqual({
         symbol: 'MSFT',
-        price: 100.0, // The getStockPrice method returns 100.0
+        price: 300.0,
         currency: 'USD',
       });
     });
   });
 
   describe('convertCurrency', () => {
+    beforeEach(() => {
+      // Mock the fetch method to avoid real API calls in tests
+      global.fetch = vi.fn() as unknown as typeof fetch;
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
     it('should return same amount for same currency', async () => {
       const result = await service.convertCurrency(100, 'USD', 'USD');
       expect(result).toBe(100);
     });
 
-    it('should return amount for different currencies (mock)', async () => {
+    it('should convert between different currencies using exchange rate API', async () => {
+      const mockResponse = {
+        rates: {
+          USD: 1.16,
+        },
+      };
+
+      vi.mocked(global.fetch).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      } as Response);
+
       const result = await service.convertCurrency(100, 'EUR', 'USD');
-      expect(result).toBe(100); // Mock implementation returns same amount
+      expect(result).toBeCloseTo(116, 1); // 100 * 1.16, allowing for floating point precision
     });
 
     it('should handle conversion errors gracefully', async () => {
+      vi.mocked(global.fetch).mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        statusText: 'Not Found',
+      } as Response);
+
       // The service returns the original amount as fallback
       const result = await service.convertCurrency(50, 'INVALID', 'USD');
       expect(result).toBe(50);
