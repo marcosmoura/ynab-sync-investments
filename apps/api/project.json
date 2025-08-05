@@ -5,19 +5,21 @@
   "projectType": "application",
   "targets": {
     "build": {
-      "executor": "nx:run-commands",
+      "executor": "@nx/vite:build",
       "options": {
-        "command": "webpack-cli build",
-        "args": ["--node-env=production"]
+        "outputPath": "dist/apps/api",
+        "configFile": "apps/api/vite.config.ts"
       },
       "configurations": {
         "development": {
-          "args": ["--node-env=development"]
+          "mode": "development"
+        },
+        "production": {
+          "mode": "production"
         }
       }
     },
     "serve": {
-      "continuous": true,
       "executor": "@nx/js:node",
       "defaultConfiguration": "development",
       "dependsOn": ["build"],
@@ -38,7 +40,7 @@
       "executor": "@nx/vite:test",
       "outputs": ["{workspaceRoot}/coverage/apps/api/unit"],
       "options": {
-        "config": "apps/api/vitest.config.ts",
+        "config": "apps/api/vite.config.ts",
         "passWithNoTests": true
       }
     },

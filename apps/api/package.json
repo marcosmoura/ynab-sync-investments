@@ -33,7 +33,6 @@
     "tsconfig-paths": "^4.2.0",
     "typeorm-ts-node-commonjs": "0.3.20",
     "unplugin-swc": "^1.5.5",
-    "vitest": "^3.2.4",
-    "webpack-cli": "^6.0.1"
+    "vitest": "^3.2.4"
   }
 }
