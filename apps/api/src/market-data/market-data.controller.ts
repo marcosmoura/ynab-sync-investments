@@ -1,8 +1,8 @@
 import { Controller, Get, Query, ValidationPipe, UsePipes } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 
-import { MarketDataService } from './market-data.service';
 import { GetAssetPriceDto, ConvertCurrencyDto, AssetPriceResponseDto } from './dto';
+import { MarketDataService } from './market-data.service';
 
 @ApiTags('market-data')
 @Controller('market-data')

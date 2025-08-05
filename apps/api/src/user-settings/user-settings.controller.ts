@@ -1,7 +1,8 @@
 import { Controller, Get, Post, Body, Patch, ValidationPipe, UsePipes } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
-import { UserSettingsService } from './user-settings.service';
+
 import { CreateUserSettingsDto, UpdateUserSettingsDto, UserSettingsResponseDto } from './dto';
+import { UserSettingsService } from './user-settings.service';
 
 @ApiTags('user-settings')
 @Controller('settings')

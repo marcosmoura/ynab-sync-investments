@@ -1,5 +1,5 @@
-import { IsNumber, IsString, IsUUID, IsPositive } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { IsNumber, IsString, IsUUID, IsPositive } from 'class-validator';
 
 export class UpdateAssetDto {
   @ApiProperty({

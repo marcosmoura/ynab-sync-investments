@@ -1,12 +1,12 @@
+import { createMock } from '@golevelup/ts-vitest';
 import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createMock } from '@golevelup/ts-vitest';
 
 import { UserSettings } from '@/shared/entities';
 
-import { UserSettingsService } from './user-settings.service';
 import { UserSettingsController } from './user-settings.controller';
+import { UserSettingsService } from './user-settings.service';
 
 describe('UserSettingsController', () => {
   let controller: UserSettingsController;

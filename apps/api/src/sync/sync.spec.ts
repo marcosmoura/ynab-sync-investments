@@ -1,6 +1,6 @@
+import { createMock } from '@golevelup/ts-vitest';
 import { Test } from '@nestjs/testing';
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createMock } from '@golevelup/ts-vitest';
 
 import { AssetService } from '@/asset/asset.service';
 import { MarketDataService } from '@/market-data/market-data.service';

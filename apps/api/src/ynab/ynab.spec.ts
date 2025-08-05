@@ -1,11 +1,11 @@
+import { createMock } from '@golevelup/ts-vitest';
 import { Test } from '@nestjs/testing';
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createMock } from '@golevelup/ts-vitest';
 
 import { SyncService } from '@/sync/sync.service';
 
-import { YnabService } from './ynab.service';
 import { YnabController } from './ynab.controller';
+import { YnabService } from './ynab.service';
 
 describe('YnabController', () => {
   let controller: YnabController;

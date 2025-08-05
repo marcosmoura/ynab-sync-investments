@@ -1,8 +1,8 @@
 import { Test } from '@nestjs/testing';
 import { describe, it, expect, beforeEach } from 'vitest';
 
-import { MarketDataService } from './market-data.service';
 import { MarketDataController } from './market-data.controller';
+import { MarketDataService } from './market-data.service';
 
 describe('MarketDataController', () => {
   let controller: MarketDataController;

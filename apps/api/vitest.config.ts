@@ -1,7 +1,8 @@
 /// <reference types="vitest" />
-import { defineConfig } from 'vitest/config';
 import { resolve } from 'path';
+
 import swc from 'unplugin-swc';
+import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   cacheDir: '../../../node_modules/.vite/apps/api/unit',

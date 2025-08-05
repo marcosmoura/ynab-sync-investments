@@ -1,5 +1,5 @@
-import { DataSource } from 'typeorm';
 import * as dotenv from 'dotenv';
+import { DataSource } from 'typeorm';
 import 'reflect-metadata';
 
 // Load environment variables
@@ -15,6 +15,6 @@ export default new DataSource({
   entities: ['src/shared/entities/*.entity{.ts,.js}'],
   migrations: ['src/shared/migrations/*{.ts,.js}'],
   migrationsTableName: 'migrations',
-  synchronize: ['development', 'test'].includes(process.env.NODE_ENV!) || false,
+  synchronize: ['development', 'test'].includes(process.env.NODE_ENV ?? 'production') || false,
   logging: process.env.NODE_ENV === 'development',
 });

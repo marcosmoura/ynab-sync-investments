@@ -1,5 +1,5 @@
-import { IsString, IsEnum } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { IsString, IsEnum } from 'class-validator';
 
 import { SyncSchedule } from '@/shared/entities';
 

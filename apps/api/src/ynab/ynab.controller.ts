@@ -1,9 +1,10 @@
 import { Controller, Post, Body, Inject, forwardRef } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
+
 import { SyncService } from '@/sync/sync.service';
 
-import { YnabService } from './ynab.service';
 import { YnabAccountDto } from './dto';
+import { YnabService } from './ynab.service';
 
 @ApiTags('ynab')
 @Controller('ynab')

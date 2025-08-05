@@ -1,12 +1,12 @@
+import { createMock } from '@golevelup/ts-vitest';
 import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createMock } from '@golevelup/ts-vitest';
 
 import { Asset } from '@/shared/entities';
 
-import { AssetService } from './asset.service';
 import { AssetController } from './asset.controller';
+import { AssetService } from './asset.service';
 
 describe('AssetController', () => {
   let controller: AssetController;

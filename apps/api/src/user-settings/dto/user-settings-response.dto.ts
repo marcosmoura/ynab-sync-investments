@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+
 import { SyncSchedule } from '@/shared/entities';
 
 export class UserSettingsResponseDto {

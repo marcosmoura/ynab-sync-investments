@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+
 import { YnabAccountDto } from './dto';
 
 interface YnabApiAccount {
@@ -12,7 +13,7 @@ interface YnabApiAccount {
 export class YnabService {
   private readonly logger = new Logger(YnabService.name);
   private readonly baseURL = 'https://api.youneedabudget.com/v1';
-  private authHeader: string = '';
+  private authHeader = '';
 
   private setAuthHeader(token: string): void {
     this.authHeader = `Bearer ${token}`;

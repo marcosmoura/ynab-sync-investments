@@ -55,7 +55,12 @@ export class SyncService {
         if (!assetsByAccount.has(asset.ynabAccountId)) {
           assetsByAccount.set(asset.ynabAccountId, []);
         }
-        assetsByAccount.get(asset.ynabAccountId)!.push(asset);
+
+        const accountAssetsList = assetsByAccount.get(asset.ynabAccountId);
+
+        if (accountAssetsList) {
+          accountAssetsList.push(asset);
+        }
       }
 
       // Get YNAB accounts to determine currency
@@ -127,10 +132,11 @@ export class SyncService {
       case SyncSchedule.WEEKLY:
         return today === 1; // Monday
 
-      case SyncSchedule.EVERY_TWO_WEEKS:
+      case SyncSchedule.EVERY_TWO_WEEKS: {
         // Sync every two weeks on Monday
         const weekNumber = Math.ceil(dayOfMonth / 7);
         return today === 1 && weekNumber % 2 === 0;
+      }
 
       case SyncSchedule.MONTHLY_FIRST:
         return dayOfMonth === 1;

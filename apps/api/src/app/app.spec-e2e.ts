@@ -1,5 +1,5 @@
-import request from 'supertest';
 import { Test } from '@nestjs/testing';
+import request from 'supertest';
 import { describe, it, beforeEach, afterAll } from 'vitest';
 
 import { AppModule } from './app.module';

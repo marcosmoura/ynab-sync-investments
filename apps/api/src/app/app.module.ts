@@ -1,13 +1,13 @@
 import { INestApplication, Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
+import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { Asset, UserSettings } from '@/shared/entities';
-import * as migrations from '@/shared/migrations';
 import { AssetModule } from '@/asset';
 import { DocumentationModule } from '@/documentation';
 import { MarketDataModule } from '@/market-data';
+import { Asset, UserSettings } from '@/shared/entities';
+import * as migrations from '@/shared/migrations';
 import { SyncModule } from '@/sync';
 import { UserSettingsModule } from '@/user-settings';
 import { YnabModule } from '@/ynab';
