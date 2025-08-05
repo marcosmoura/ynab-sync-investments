@@ -96,13 +96,12 @@ export class SyncService {
           }
         }
 
-        // Update YNAB account balance
-        // TODO: Instead of updating balance, it should reconcile instead
+        // Reconcile YNAB account balance with calculated portfolio value
         if (totalValue > 0) {
-          await this.ynabService.updateAccountBalance(ynabApiToken, accountId, totalValue);
+          await this.ynabService.reconcileAccountBalance(ynabApiToken, accountId, totalValue);
 
           this.logger.log(
-            `Updated YNAB account ${ynabAccount.name} with total value: ${totalValue} ${ynabAccount.currency}`,
+            `Reconciled YNAB account ${ynabAccount.name} with portfolio value: ${totalValue} ${ynabAccount.currency}`,
           );
         }
       }

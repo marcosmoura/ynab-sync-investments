@@ -103,4 +103,67 @@ export class YnabService {
       throw new Error(`Failed to update account balance: ${error.message}`);
     }
   }
+
+  async reconcileAccountBalance(
+    token: string,
+    accountId: string,
+    targetBalance: number,
+  ): Promise<void> {
+    try {
+      this.setAuthHeader(token);
+
+      // Get budget ID first
+      const budgetsResponse = await this.fetchWithAuth('/budgets');
+      const budgetsData = await budgetsResponse.json();
+      const budgets = budgetsData.data.budgets;
+      if (!budgets || budgets.length === 0) {
+        throw new Error('No budgets found in YNAB account');
+      }
+
+      const budgetId = budgets[0].id;
+
+      // Get current account details to check current balance
+      const accountsResponse = await this.fetchWithAuth(
+        `/budgets/${budgetId}/accounts/${accountId}`,
+      );
+      const accountData = await accountsResponse.json();
+      const currentBalance = accountData.data.account.balance / 1000; // Convert from milliunits
+
+      // Calculate the difference (reconciliation amount)
+      const reconciliationAmount = targetBalance - currentBalance;
+
+      // Only create a transaction if there's a meaningful difference (avoid tiny rounding differences)
+      if (Math.abs(reconciliationAmount) < 0.01) {
+        this.logger.log(
+          `Account ${accountId} is already reconciled (difference: ${reconciliationAmount})`,
+        );
+        return;
+      }
+
+      const reconciliationAmountInMilliunits = Math.round(reconciliationAmount * 1000);
+
+      // Create a reconciliation transaction for the difference
+      const transaction = {
+        account_id: accountId,
+        amount: reconciliationAmountInMilliunits,
+        payee_name: 'Investment Portfolio Reconciliation',
+        memo: `Reconciliation: ${reconciliationAmount >= 0 ? '+' : ''}${reconciliationAmount.toFixed(2)} (Current: ${currentBalance.toFixed(2)} → Target: ${targetBalance.toFixed(2)})`,
+        cleared: 'cleared',
+        approved: true,
+        date: new Date().toISOString().split('T')[0], // Today's date in YYYY-MM-DD format
+      };
+
+      await this.fetchWithAuth(`/budgets/${budgetId}/transactions`, {
+        method: 'POST',
+        body: JSON.stringify({ transaction }),
+      });
+
+      this.logger.log(
+        `Successfully reconciled account ${accountId}: ${currentBalance.toFixed(2)} → ${targetBalance.toFixed(2)} (${reconciliationAmount >= 0 ? '+' : ''}${reconciliationAmount.toFixed(2)})`,
+      );
+    } catch (error) {
+      this.logger.error(`Failed to reconcile account ${accountId} balance`, error);
+      throw new Error(`Failed to reconcile account balance: ${error.message}`);
+    }
+  }
 }

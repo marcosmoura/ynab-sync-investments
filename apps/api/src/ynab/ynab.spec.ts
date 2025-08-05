@@ -358,4 +358,130 @@ describe('YnabService', () => {
       expect(fetch).toHaveBeenCalledTimes(2);
     });
   });
+
+  describe('reconcileAccountBalance', () => {
+    it('should reconcile account balance when target differs from current', async () => {
+      const mockBudgetsResponse = {
+        data: {
+          budgets: [{ id: 'budget-123' }],
+        },
+      };
+
+      const mockAccountResponse = {
+        data: {
+          account: {
+            id: 'account-123',
+            balance: 1000000, // $1000.00 in milliunits
+          },
+        },
+      };
+
+      global.fetch = vi
+        .fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockBudgetsResponse),
+        } as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockAccountResponse),
+        } as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({}),
+        } as Response);
+
+      await service.reconcileAccountBalance('test-token', 'account-123', 1500.75);
+
+      expect(fetch).toHaveBeenCalledTimes(3);
+      expect(fetch).toHaveBeenNthCalledWith(1, 'https://api.youneedabudget.com/v1/budgets', {
+        headers: {
+          Authorization: 'Bearer test-token',
+          'Content-Type': 'application/json',
+        },
+      });
+      expect(fetch).toHaveBeenNthCalledWith(
+        2,
+        'https://api.youneedabudget.com/v1/budgets/budget-123/accounts/account-123',
+        expect.objectContaining({
+          headers: {
+            Authorization: 'Bearer test-token',
+            'Content-Type': 'application/json',
+          },
+        }),
+      );
+      expect(fetch).toHaveBeenNthCalledWith(
+        3,
+        'https://api.youneedabudget.com/v1/budgets/budget-123/transactions',
+        expect.objectContaining({
+          method: 'POST',
+          headers: {
+            Authorization: 'Bearer test-token',
+            'Content-Type': 'application/json',
+          },
+          body: expect.stringContaining('"account_id":"account-123"'),
+        }),
+      );
+    });
+
+    it('should skip reconciliation when difference is less than 0.01', async () => {
+      const mockBudgetsResponse = {
+        data: {
+          budgets: [{ id: 'budget-123' }],
+        },
+      };
+
+      const mockAccountResponse = {
+        data: {
+          account: {
+            id: 'account-123',
+            balance: 1500000, // $1500.00 in milliunits
+          },
+        },
+      };
+
+      global.fetch = vi
+        .fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockBudgetsResponse),
+        } as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockAccountResponse),
+        } as Response);
+
+      await service.reconcileAccountBalance('test-token', 'account-123', 1500.005); // Very small difference
+
+      expect(fetch).toHaveBeenCalledTimes(2); // No transaction creation call
+    });
+
+    it('should handle no budgets found for reconciliation', async () => {
+      const mockBudgetsResponse = {
+        data: { budgets: [] },
+      };
+
+      global.fetch = vi.fn().mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockBudgetsResponse),
+      } as Response);
+
+      await expect(
+        service.reconcileAccountBalance('test-token', 'account-123', 1500),
+      ).rejects.toThrow('Failed to reconcile account balance');
+      expect(fetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('should handle API errors during reconciliation', async () => {
+      global.fetch = vi.fn().mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+      } as Response);
+
+      await expect(
+        service.reconcileAccountBalance('invalid-token', 'account-123', 1500),
+      ).rejects.toThrow('Failed to reconcile account balance');
+      expect(fetch).toHaveBeenCalledTimes(1);
+    });
+  });
 });

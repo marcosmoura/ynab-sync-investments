@@ -22,7 +22,7 @@ describe('SyncService', () => {
 
   const mockYnabService = {
     getAccounts: vi.fn(),
-    updateAccountBalance: vi.fn(),
+    reconcileAccountBalance: vi.fn(),
   };
 
   const mockMarketDataService = {
@@ -161,7 +161,7 @@ describe('SyncService', () => {
         .mockResolvedValueOnce({ symbol: 'MSFT', price: 300.0, currency: 'USD' })
         .mockResolvedValueOnce({ symbol: 'BTC', price: 40000.0, currency: 'EUR' });
 
-      mockYnabService.updateAccountBalance.mockResolvedValue(undefined);
+      mockYnabService.reconcileAccountBalance.mockResolvedValue(undefined);
 
       await service.performSync('test-token');
 
@@ -173,13 +173,13 @@ describe('SyncService', () => {
       expect(mockMarketDataService.getAssetPrice).toHaveBeenCalledWith('MSFT', 'USD');
       expect(mockMarketDataService.getAssetPrice).toHaveBeenCalledWith('BTC', 'EUR');
 
-      // Verify YNAB account balance updates
-      expect(mockYnabService.updateAccountBalance).toHaveBeenCalledWith(
+      // Verify YNAB account balance reconciliation
+      expect(mockYnabService.reconcileAccountBalance).toHaveBeenCalledWith(
         'test-token',
         'account-1',
         3000, // AAPL: 10 * 150 + MSFT: 5 * 300 = 1500 + 1500 = 3000
       );
-      expect(mockYnabService.updateAccountBalance).toHaveBeenCalledWith(
+      expect(mockYnabService.reconcileAccountBalance).toHaveBeenCalledWith(
         'test-token',
         'account-2',
         20000, // BTC: 0.5 * 40000 = 20000
@@ -205,13 +205,13 @@ describe('SyncService', () => {
         .mockResolvedValueOnce({ symbol: 'MSFT', price: 300.0, currency: 'USD' })
         .mockResolvedValueOnce({ symbol: 'BTC', price: 40000.0, currency: 'EUR' });
 
-      mockYnabService.updateAccountBalance.mockResolvedValue(undefined);
+      mockYnabService.reconcileAccountBalance.mockResolvedValue(undefined);
 
       await service.performSync('test-token');
 
       // Should only call for known accounts
       expect(mockMarketDataService.getAssetPrice).toHaveBeenCalledTimes(3);
-      expect(mockYnabService.updateAccountBalance).toHaveBeenCalledTimes(2);
+      expect(mockYnabService.reconcileAccountBalance).toHaveBeenCalledTimes(2);
     });
 
     it('should handle market data errors gracefully', async () => {
@@ -221,12 +221,12 @@ describe('SyncService', () => {
       // Mock market data to throw error
       mockMarketDataService.getAssetPrice.mockRejectedValue(new Error('Price not available'));
 
-      mockYnabService.updateAccountBalance.mockResolvedValue(undefined);
+      mockYnabService.reconcileAccountBalance.mockResolvedValue(undefined);
 
       await service.performSync('test-token');
 
-      // Should still try to update account balance (with 0 total value)
-      expect(mockYnabService.updateAccountBalance).not.toHaveBeenCalled();
+      // Should still try to reconcile account balance (with 0 total value)
+      expect(mockYnabService.reconcileAccountBalance).not.toHaveBeenCalled();
     });
 
     it('should handle YNAB service errors', async () => {
