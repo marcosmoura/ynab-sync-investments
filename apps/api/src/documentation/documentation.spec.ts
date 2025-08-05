@@ -1,34 +1,25 @@
 import { Test } from '@nestjs/testing';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
+import { DocumentationController } from './documentation.controller';
+import { DocumentationService } from './documentation.service';
 
-describe('AppController', () => {
-  let controller: AppController;
-  let appService: AppService;
+describe('DocumentationController', () => {
+  let controller: DocumentationController;
+  let service: DocumentationService;
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
-      controllers: [AppController],
-      providers: [AppService],
+      controllers: [DocumentationController],
+      providers: [DocumentationService],
     }).compile();
 
-    appService = moduleRef.get(AppService);
-    controller = moduleRef.get(AppController);
+    service = moduleRef.get(DocumentationService);
+    controller = moduleRef.get(DocumentationController);
   });
 
   it('should be defined', () => {
     expect(controller).toBeDefined();
-  });
-
-  describe('getData', () => {
-    it('should return data from service', async () => {
-      const expectedData = {};
-      vi.spyOn(appService, 'getData').mockReturnValue(expectedData);
-
-      expect(await controller.getData()).toBe(expectedData);
-      expect(appService.getData).toHaveBeenCalled();
-    });
+    expect(service).toBeDefined();
   });
 });

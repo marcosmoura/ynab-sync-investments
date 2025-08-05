@@ -1,3 +1,4 @@
+import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { describe, it, beforeEach, afterAll } from 'vitest';
@@ -5,7 +6,7 @@ import { describe, it, beforeEach, afterAll } from 'vitest';
 import { AppModule } from './app.module';
 
 describe('AppController (e2e)', () => {
-  let app;
+  let app: INestApplication;
 
   beforeEach(async () => {
     const moduleFixture = await Test.createTestingModule({
@@ -22,6 +23,11 @@ describe('AppController (e2e)', () => {
   });
 
   it('/ (GET)', () => {
-    return request(app.getHttpServer()).get('/api').expect(200).expect({});
+    return request(app.getHttpServer()).get('/api').expect(200).expect({
+      message: 'YNAB Investments Sync API',
+      version: '1.0.0',
+      status: 'running',
+      documentation: '/api/docs',
+    });
   });
 });

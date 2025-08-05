@@ -24,11 +24,16 @@ describe('AppController', () => {
 
   describe('getData', () => {
     it('should return data from service', async () => {
-      const expectedData = {};
+      const expectedData = {
+        message: 'YNAB Investments Sync API',
+        version: '1.0.0',
+        status: 'running',
+        documentation: '/api/docs',
+      };
       vi.spyOn(appService, 'getData').mockReturnValue(expectedData);
 
-      expect(await controller.getData()).toBe(expectedData);
       expect(appService.getData).toHaveBeenCalled();
+      expect(await controller.getData()).toBe(expectedData);
     });
   });
 });
