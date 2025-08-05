@@ -25,7 +25,10 @@
       "dependsOn": ["build"],
       "options": {
         "buildTarget": "api:build",
-        "runBuildTargetDependencies": false
+        "runBuildTargetDependencies": false,
+        "buildTargetOptions": {
+          "main": "dist/apps/api/main.cjs"
+        }
       },
       "configurations": {
         "development": {
@@ -47,16 +50,9 @@
     "typecheck": {
       "executor": "nx:run-commands",
       "cache": true,
-      "inputs": [
-        "production",
-        "^production",
-        {
-          "externalDependencies": ["typescript"]
-        }
-      ],
       "options": {
         "cwd": "apps/api",
-        "command": "tsc --noEmit -p tsconfig.app.json"
+        "command": "npx tsgo --noEmit -p tsconfig.app.json"
       }
     },
     "migration:generate": {

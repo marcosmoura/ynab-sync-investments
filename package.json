@@ -11,8 +11,7 @@
     "lint-staged": "lint-staged",
     "lint:fix": "oxlint --fix . && eslint --fix .",
     "prepare": "husky",
-    "setup": "tsx scripts/setup.ts",
-    "typecheck": "nx run-many -t typecheck"
+    "setup": "tsx scripts/setup.ts"
   },
   "devDependencies": {
     "@nx/devkit": "21.3.11",
@@ -25,6 +24,7 @@
     "@nx/web": "21.3.11",
     "@nx/workspace": "21.3.11",
     "@types/node": "^24.2.0",
+    "@typescript/native-preview": "7.0.0-dev.20250805.1",
     "eslint": "^9.32.0",
     "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-oxlint": "^1.9.0",

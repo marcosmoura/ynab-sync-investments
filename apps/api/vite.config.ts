@@ -42,6 +42,7 @@ export default defineConfig({
       ],
       output: {
         banner: '#!/usr/bin/env node',
+        dir: 'dist/apps/api',
       },
     },
     minify: false,
@@ -57,7 +58,7 @@ export default defineConfig({
     swc.vite({
       module: { type: 'es6' },
       jsc: {
-        target: 'es2022',
+        target: 'esnext',
         parser: {
           syntax: 'typescript',
           decorators: true,
@@ -65,6 +66,9 @@ export default defineConfig({
         transform: {
           legacyDecorator: true,
           decoratorMetadata: true,
+          optimizer: {
+            simplify: true,
+          },
         },
       },
     }),

@@ -2,20 +2,20 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "API Unit Tests",
-      "type": "shell",
       "command": "pnpm nx test api",
       "group": "test",
       "isBackground": false,
-      "problemMatcher": []
+      "label": "API Unit Tests",
+      "problemMatcher": [],
+      "type": "shell"
     },
     {
-      "label": "API Unit Tests with Coverage",
-      "type": "shell",
       "command": "pnpm nx test api --coverage",
       "group": "test",
       "isBackground": false,
-      "problemMatcher": []
+      "label": "API Unit Tests with Coverage",
+      "problemMatcher": [],
+      "type": "shell"
     }
   ]
 }

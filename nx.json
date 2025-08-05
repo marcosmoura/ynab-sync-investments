@@ -30,8 +30,8 @@
   "generators": {
     "@nx/web:application": {
       "style": "css",
-      "linter": "none",
-      "unitTestRunner": "none",
+      "linter": "eslint",
+      "unitTestRunner": "vitest",
       "e2eTestRunner": "playwright"
     }
   }
