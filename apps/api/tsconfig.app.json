@@ -1,13 +1,15 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
+    "composite": true,
+    "declaration": true,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "module": "commonjs",
     "outDir": "../../dist/out-tsc",
     "paths": {
-      "@/*": ["./src/*"],
-      "*": ["./*"]
+      "*": ["./*"],
+      "@/*": ["./src/*"]
     },
     "target": "es2021",
     "types": ["node"]

@@ -24,7 +24,7 @@
       "cache": true,
       "options": {
         "cwd": "apps/web",
-        "command": "npx tsgo --noEmit -p tsconfig.app.json"
+        "command": "npx tsgo --noEmit -p tsconfig.json"
       }
     }
   }

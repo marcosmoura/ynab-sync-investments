@@ -19,12 +19,16 @@
   },
   "files": [],
   "include": ["src"],
+  "exclude": ["src/**/*.spec.ts", "src/**/*.test.ts"],
   "references": [
     {
       "path": "./tsconfig.app.json"
     },
     {
       "path": "./tsconfig.e2e.json"
+    },
+    {
+      "path": "./tsconfig.spec.json"
     }
   ]
 }

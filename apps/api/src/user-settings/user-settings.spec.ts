@@ -21,6 +21,7 @@ describe('UserSettingsService', () => {
     id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
     ynabApiToken: 'ynab-token-12345',
     syncSchedule: SyncSchedule.DAILY,
+    targetBudgetId: 'b1c2d3e4-f5g6-7890-bcde-fg1234567890',
     createdAt: new Date('2023-12-01T10:30:00Z'),
     updatedAt: new Date('2023-12-01T15:45:00Z'),
   };
@@ -60,6 +61,7 @@ describe('UserSettingsService', () => {
         id: mockUserSettings.id,
         ynabApiToken: mockUserSettings.ynabApiToken,
         syncSchedule: mockUserSettings.syncSchedule,
+        targetBudgetId: mockUserSettings.targetBudgetId,
         createdAt: mockUserSettings.createdAt,
         updatedAt: mockUserSettings.updatedAt,
       });
@@ -106,6 +108,7 @@ describe('UserSettingsService', () => {
         id: mockUserSettings.id,
         ynabApiToken: mockUserSettings.ynabApiToken,
         syncSchedule: mockUserSettings.syncSchedule,
+        targetBudgetId: mockUserSettings.targetBudgetId,
         createdAt: mockUserSettings.createdAt,
         updatedAt: mockUserSettings.updatedAt,
       });
@@ -159,6 +162,7 @@ describe('UserSettingsService', () => {
         id: updatedSettings.id,
         ynabApiToken: updatedSettings.ynabApiToken,
         syncSchedule: updatedSettings.syncSchedule,
+        targetBudgetId: updatedSettings.targetBudgetId,
         createdAt: updatedSettings.createdAt,
         updatedAt: updatedSettings.updatedAt,
       });
@@ -188,6 +192,7 @@ describe('UserSettingsService', () => {
         id: updatedSettings.id,
         ynabApiToken: updatedSettings.ynabApiToken,
         syncSchedule: updatedSettings.syncSchedule,
+        targetBudgetId: updatedSettings.targetBudgetId,
         createdAt: updatedSettings.createdAt,
         updatedAt: updatedSettings.updatedAt,
       });
@@ -203,6 +208,7 @@ describe('UserSettingsService', () => {
         id: 'new-id-123',
         ynabApiToken: 'new-token-67890',
         syncSchedule: SyncSchedule.DAILY,
+        targetBudgetId: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -219,6 +225,7 @@ describe('UserSettingsService', () => {
         id: newSettings.id,
         ynabApiToken: newSettings.ynabApiToken,
         syncSchedule: newSettings.syncSchedule,
+        targetBudgetId: newSettings.targetBudgetId,
         createdAt: newSettings.createdAt,
         updatedAt: newSettings.updatedAt,
       });
