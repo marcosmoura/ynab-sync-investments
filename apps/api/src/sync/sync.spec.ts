@@ -4,6 +4,7 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { AssetService } from '@/asset/asset.service';
 import { MarketDataService } from '@/market-data/market-data.service';
 import { SyncSchedule } from '@/shared/entities';
+import { UserSettingsResponseDto } from '@/user-settings/dto';
 import { UserSettingsService } from '@/user-settings/user-settings.service';
 import { YnabService } from '@/ynab/ynab.service';
 
@@ -11,6 +12,15 @@ import { SyncService } from './sync.service';
 
 describe('SyncService', () => {
   let service: SyncService;
+
+  const mockUserSettings: UserSettingsResponseDto = {
+    id: 'test-id',
+    ynabApiToken: 'test-token',
+    syncSchedule: SyncSchedule.DAILY,
+    targetBudgetId: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
 
   const mockAssetService = {
     findAll: vi.fn(),
@@ -104,7 +114,10 @@ describe('SyncService', () => {
 
       expect(mockUserSettingsService.findSettings).toHaveBeenCalled();
       expect(service.shouldSync).toHaveBeenCalledWith(SyncSchedule.DAILY);
-      expect(service.performSync).toHaveBeenCalledWith('test-token');
+      expect(service.performSync).toHaveBeenCalledWith({
+        ynabApiToken: 'test-token',
+        syncSchedule: SyncSchedule.DAILY,
+      });
     });
 
     it('should handle errors gracefully', async () => {
@@ -145,7 +158,7 @@ describe('SyncService', () => {
     it('should skip sync when no assets found', async () => {
       mockAssetService.findAll.mockResolvedValue([]);
 
-      await service.performSync('test-token');
+      await service.performSync(mockUserSettings);
 
       expect(mockAssetService.findAll).toHaveBeenCalled();
       expect(mockYnabService.getAccounts).not.toHaveBeenCalled();
@@ -163,10 +176,10 @@ describe('SyncService', () => {
 
       mockYnabService.reconcileAccountBalance.mockResolvedValue(undefined);
 
-      await service.performSync('test-token');
+      await service.performSync(mockUserSettings);
 
       expect(mockAssetService.findAll).toHaveBeenCalled();
-      expect(mockYnabService.getAccounts).toHaveBeenCalledWith('test-token');
+      expect(mockYnabService.getAccounts).toHaveBeenCalledWith('test-token', null);
 
       // Verify market data calls
       expect(mockMarketDataService.getAssetPrice).toHaveBeenCalledWith('AAPL', 'USD');
@@ -178,11 +191,13 @@ describe('SyncService', () => {
         'test-token',
         'account-1',
         3000, // AAPL: 10 * 150 + MSFT: 5 * 300 = 1500 + 1500 = 3000
+        null,
       );
       expect(mockYnabService.reconcileAccountBalance).toHaveBeenCalledWith(
         'test-token',
         'account-2',
         20000, // BTC: 0.5 * 40000 = 20000
+        null,
       );
     });
 
@@ -207,7 +222,7 @@ describe('SyncService', () => {
 
       mockYnabService.reconcileAccountBalance.mockResolvedValue(undefined);
 
-      await service.performSync('test-token');
+      await service.performSync(mockUserSettings);
 
       // Should only call for known accounts
       expect(mockMarketDataService.getAssetPrice).toHaveBeenCalledTimes(3);
@@ -223,7 +238,7 @@ describe('SyncService', () => {
 
       mockYnabService.reconcileAccountBalance.mockResolvedValue(undefined);
 
-      await service.performSync('test-token');
+      await service.performSync(mockUserSettings);
 
       // Should still try to reconcile account balance (with 0 total value)
       expect(mockYnabService.reconcileAccountBalance).not.toHaveBeenCalled();
@@ -233,7 +248,7 @@ describe('SyncService', () => {
       mockAssetService.findAll.mockResolvedValue([mockAssets[0]]);
       mockYnabService.getAccounts.mockRejectedValue(new Error('YNAB API error'));
 
-      await expect(service.performSync('test-token')).rejects.toThrow('YNAB API error');
+      await expect(service.performSync(mockUserSettings)).rejects.toThrow('YNAB API error');
     });
   });
 
@@ -369,7 +384,7 @@ describe('SyncService', () => {
       await service.triggerManualSync();
 
       expect(mockUserSettingsService.findSettings).toHaveBeenCalled();
-      expect(service.performSync).toHaveBeenCalledWith('manual-test-token');
+      expect(service.performSync).toHaveBeenCalledWith(mockSettings);
     });
 
     it('should throw error when no user settings found', async () => {

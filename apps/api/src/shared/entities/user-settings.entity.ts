@@ -30,6 +30,9 @@ export class UserSettings {
   })
   syncSchedule: SyncSchedule;
 
+  @Column({ nullable: true })
+  targetBudgetId: string;
+
   @CreateDateColumn()
   createdAt: Date;
 

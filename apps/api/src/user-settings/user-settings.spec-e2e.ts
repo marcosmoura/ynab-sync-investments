@@ -4,6 +4,7 @@ import request from 'supertest';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import { SyncSchedule } from '@/shared/entities';
+import { YnabService } from '@/ynab/ynab.service';
 
 import { UserSettingsController } from './user-settings.controller';
 import { UserSettingsService } from './user-settings.service';
@@ -22,6 +23,13 @@ describe('UserSettingsController (e2e)', () => {
             create: vi.fn(),
             findSettings: vi.fn(),
             update: vi.fn(),
+          },
+        },
+        {
+          provide: YnabService,
+          useValue: {
+            getBudgets: vi.fn(),
+            getAccounts: vi.fn(),
           },
         },
       ],
@@ -51,6 +59,7 @@ describe('UserSettingsController (e2e)', () => {
         id: '123e4567-e89b-12d3-a456-426614174000',
         ynabApiToken: 'test-token-123',
         syncSchedule: SyncSchedule.DAILY,
+        targetBudgetId: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -109,6 +118,7 @@ describe('UserSettingsController (e2e)', () => {
         id: '123e4567-e89b-12d3-a456-426614174000',
         ynabApiToken: 'test-token-123',
         syncSchedule: SyncSchedule.DAILY,
+        targetBudgetId: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -157,6 +167,7 @@ describe('UserSettingsController (e2e)', () => {
         id: '123e4567-e89b-12d3-a456-426614174000',
         ynabApiToken: 'test-token-123',
         syncSchedule: SyncSchedule.WEEKLY,
+        targetBudgetId: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       };

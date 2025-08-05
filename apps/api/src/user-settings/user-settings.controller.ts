@@ -1,5 +1,18 @@
-import { Controller, Get, Post, Body, Patch, ValidationPipe, UsePipes } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  ValidationPipe,
+  UsePipes,
+  Inject,
+  forwardRef,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
+
+import { YnabBudgetDto } from '@/ynab/dto';
+import { YnabService } from '@/ynab/ynab.service';
 
 import { CreateUserSettingsDto, UpdateUserSettingsDto, UserSettingsResponseDto } from './dto';
 import { UserSettingsService } from './user-settings.service';
@@ -7,7 +20,38 @@ import { UserSettingsService } from './user-settings.service';
 @ApiTags('user-settings')
 @Controller('settings')
 export class UserSettingsController {
-  constructor(private readonly userSettingsService: UserSettingsService) {}
+  constructor(
+    private readonly userSettingsService: UserSettingsService,
+    @Inject(forwardRef(() => YnabService))
+    private readonly ynabService: YnabService,
+  ) {}
+
+  @Post('budgets')
+  @ApiOperation({ summary: 'Get available YNAB budgets for selection' })
+  @ApiBody({
+    description: 'YNAB API token',
+    schema: {
+      type: 'object',
+      properties: {
+        token: {
+          type: 'string',
+          example: 'ynab-api-token-12345678901234567890123456789012',
+          description: 'YNAB API token',
+        },
+      },
+      required: ['token'],
+    },
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Available budgets retrieved successfully',
+    type: [YnabBudgetDto],
+  })
+  @ApiResponse({ status: 400, description: 'Invalid YNAB API token' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - invalid token' })
+  async getBudgets(@Body('token') token: string): Promise<YnabBudgetDto[]> {
+    return this.ynabService.getBudgets(token);
+  }
 
   @Post()
   @ApiOperation({ summary: 'Create user settings' })

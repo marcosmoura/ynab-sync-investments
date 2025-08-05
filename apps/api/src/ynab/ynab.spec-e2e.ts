@@ -79,7 +79,7 @@ describe('/ynab (e2e)', () => {
       expect(response.body).toHaveLength(2);
       expect(response.body[0].name).toBe('Investment Account');
       expect(response.body[1].name).toBe('Checking Account');
-      expect(ynabService.getAccounts).toHaveBeenCalledWith('valid-test-token');
+      expect(ynabService.getAccounts).toHaveBeenCalledWith('valid-test-token', undefined);
     });
 
     it('should handle missing token', async () => {
@@ -87,7 +87,7 @@ describe('/ynab (e2e)', () => {
 
       await request(app.getHttpServer()).post('/api/ynab/accounts').send({}).expect(201).expect([]);
 
-      expect(ynabService.getAccounts).toHaveBeenCalledWith(undefined);
+      expect(ynabService.getAccounts).toHaveBeenCalledWith(undefined, undefined);
     });
 
     it('should handle invalid token', async () => {
@@ -100,7 +100,7 @@ describe('/ynab (e2e)', () => {
         .send({ token: 'invalid-token' })
         .expect(500);
 
-      expect(ynabService.getAccounts).toHaveBeenCalledWith('invalid-token');
+      expect(ynabService.getAccounts).toHaveBeenCalledWith('invalid-token', undefined);
     });
 
     it('should handle empty accounts response', async () => {
@@ -113,7 +113,7 @@ describe('/ynab (e2e)', () => {
 
       expect(response.body).toEqual([]);
       expect(response.body).toHaveLength(0);
-      expect(ynabService.getAccounts).toHaveBeenCalledWith('empty-accounts-token');
+      expect(ynabService.getAccounts).toHaveBeenCalledWith('empty-accounts-token', undefined);
     });
 
     it('should validate request body structure', async () => {
@@ -125,7 +125,7 @@ describe('/ynab (e2e)', () => {
         .expect(201)
         .expect([]);
 
-      expect(ynabService.getAccounts).toHaveBeenCalledWith(undefined);
+      expect(ynabService.getAccounts).toHaveBeenCalledWith(undefined, undefined);
     });
 
     it('should handle YNAB service errors', async () => {
@@ -136,7 +136,7 @@ describe('/ynab (e2e)', () => {
         .send({ token: 'valid-token' })
         .expect(500);
 
-      expect(ynabService.getAccounts).toHaveBeenCalledWith('valid-token');
+      expect(ynabService.getAccounts).toHaveBeenCalledWith('valid-token', undefined);
     });
   });
 

@@ -57,9 +57,9 @@ describe('YnabController', () => {
 
       vi.spyOn(ynabService, 'getAccounts').mockResolvedValue(mockAccounts);
 
-      const result = await controller.getAccounts('test-token');
+      const result = await controller.getAccounts({ token: 'test-token' });
 
-      expect(ynabService.getAccounts).toHaveBeenCalledWith('test-token');
+      expect(ynabService.getAccounts).toHaveBeenCalledWith('test-token', undefined);
       expect(result).toEqual(mockAccounts);
       expect(result).toHaveLength(2);
       expect(result[0].name).toBe('Investment Account');
@@ -69,16 +69,18 @@ describe('YnabController', () => {
     it('should handle service errors', async () => {
       vi.spyOn(ynabService, 'getAccounts').mockRejectedValue(new Error('Invalid token'));
 
-      await expect(controller.getAccounts('invalid-token')).rejects.toThrow('Invalid token');
-      expect(ynabService.getAccounts).toHaveBeenCalledWith('invalid-token');
+      await expect(controller.getAccounts({ token: 'invalid-token' })).rejects.toThrow(
+        'Invalid token',
+      );
+      expect(ynabService.getAccounts).toHaveBeenCalledWith('invalid-token', undefined);
     });
 
     it('should return empty array when no accounts found', async () => {
       vi.spyOn(ynabService, 'getAccounts').mockResolvedValue([]);
 
-      const result = await controller.getAccounts('test-token');
+      const result = await controller.getAccounts({ token: 'test-token' });
 
-      expect(ynabService.getAccounts).toHaveBeenCalledWith('test-token');
+      expect(ynabService.getAccounts).toHaveBeenCalledWith('test-token', undefined);
       expect(result).toEqual([]);
       expect(result).toHaveLength(0);
     });

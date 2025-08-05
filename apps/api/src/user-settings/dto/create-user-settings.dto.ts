@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsEnum } from 'class-validator';
+import { IsString, IsEnum, IsOptional } from 'class-validator';
 
 import { SyncSchedule } from '@/shared/entities';
 
@@ -19,4 +19,13 @@ export class CreateUserSettingsDto {
   })
   @IsEnum(SyncSchedule)
   syncSchedule: SyncSchedule;
+
+  @ApiProperty({
+    description: 'Target budget ID to sync with',
+    example: 'b1c2d3e4-f5g6-7890-bcde-fg1234567890',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  targetBudgetId?: string;
 }

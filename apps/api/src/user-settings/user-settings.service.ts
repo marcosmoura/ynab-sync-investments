@@ -59,6 +59,7 @@ export class UserSettingsService {
       id: settings.id,
       ynabApiToken: settings.ynabApiToken,
       syncSchedule: settings.syncSchedule,
+      targetBudgetId: settings.targetBudgetId,
       createdAt: settings.createdAt,
       updatedAt: settings.updatedAt,
     };

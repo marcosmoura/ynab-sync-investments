@@ -4,6 +4,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { AssetService } from '@/asset/asset.service';
 import { MarketDataService } from '@/market-data/market-data.service';
 import { SyncSchedule } from '@/shared/entities';
+import { UserSettingsResponseDto } from '@/user-settings/dto';
 import { UserSettingsService } from '@/user-settings/user-settings.service';
 import { YnabService } from '@/ynab/ynab.service';
 
@@ -30,14 +31,14 @@ export class SyncService {
       }
 
       if (this.shouldSync(settings.syncSchedule)) {
-        await this.performSync(settings.ynabApiToken);
+        await this.performSync(settings);
       }
     } catch (error) {
       this.logger.error('Error during scheduled sync', error);
     }
   }
 
-  async performSync(ynabApiToken: string): Promise<void> {
+  async performSync(userSettings: UserSettingsResponseDto): Promise<void> {
     try {
       this.logger.log('Starting portfolio sync...');
 
@@ -63,8 +64,11 @@ export class SyncService {
         }
       }
 
-      // Get YNAB accounts to determine currency
-      const ynabAccounts = await this.ynabService.getAccounts(ynabApiToken);
+      // Get YNAB accounts to determine currency (use target budget if specified)
+      const ynabAccounts = await this.ynabService.getAccounts(
+        userSettings.ynabApiToken,
+        userSettings.targetBudgetId,
+      );
 
       // Sync each account
       for (const [accountId, accountAssets] of assetsByAccount) {
@@ -98,7 +102,12 @@ export class SyncService {
 
         // Reconcile YNAB account balance with calculated portfolio value
         if (totalValue > 0) {
-          await this.ynabService.reconcileAccountBalance(ynabApiToken, accountId, totalValue);
+          await this.ynabService.reconcileAccountBalance(
+            userSettings.ynabApiToken,
+            accountId,
+            totalValue,
+            userSettings.targetBudgetId,
+          );
 
           this.logger.log(
             `Reconciled YNAB account ${ynabAccount.name} with portfolio value: ${totalValue} ${ynabAccount.currency}`,
@@ -156,6 +165,6 @@ export class SyncService {
       throw new Error('No user settings found. Please configure the application first.');
     }
 
-    await this.performSync(settings.ynabApiToken);
+    await this.performSync(settings);
   }
 }

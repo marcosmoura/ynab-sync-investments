@@ -24,6 +24,13 @@ export class UserSettingsResponseDto {
   syncSchedule: SyncSchedule;
 
   @ApiProperty({
+    description: 'Target budget ID to sync with',
+    example: 'b1c2d3e4-f5g6-7890-bcde-fg1234567890',
+    nullable: true,
+  })
+  targetBudgetId: string | null;
+
+  @ApiProperty({
     description: 'When the settings were created',
     example: '2023-12-01T10:30:00Z',
     type: Date,
