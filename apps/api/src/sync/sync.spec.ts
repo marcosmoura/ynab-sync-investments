@@ -287,6 +287,33 @@ describe('SyncService', () => {
       expect(result).toBe(false);
     });
 
+    it('should sync every two weeks on Monday during even weeks', () => {
+      // Set to Monday in week 2 of the month
+      vi.setSystemTime(new Date('2024-01-08')); // Monday, week 2
+
+      const result = service.shouldSync(SyncSchedule.EVERY_TWO_WEEKS);
+
+      expect(result).toBe(true);
+    });
+
+    it('should not sync every two weeks on Monday during odd weeks', () => {
+      // Set to Monday in week 1 of the month
+      vi.setSystemTime(new Date('2024-01-01')); // Monday, week 1
+
+      const result = service.shouldSync(SyncSchedule.EVERY_TWO_WEEKS);
+
+      expect(result).toBe(false);
+    });
+
+    it('should not sync every two weeks on non-Monday days', () => {
+      // Set to Tuesday in week 2 of the month
+      vi.setSystemTime(new Date('2024-01-09')); // Tuesday, week 2
+
+      const result = service.shouldSync(SyncSchedule.EVERY_TWO_WEEKS);
+
+      expect(result).toBe(false);
+    });
+
     it('should sync monthly first on first day of month', () => {
       vi.setSystemTime(new Date('2024-01-01')); // 1st
 
@@ -315,6 +342,15 @@ describe('SyncService', () => {
       vi.setSystemTime(new Date('2024-01-15')); // 15th
 
       const result = service.shouldSync(SyncSchedule.MONTHLY_LAST);
+
+      expect(result).toBe(false);
+    });
+
+    it('should return false for invalid schedule', () => {
+      vi.setSystemTime(new Date('2024-01-01'));
+
+      // Use an invalid schedule value
+      const result = service.shouldSync('INVALID_SCHEDULE' as SyncSchedule);
 
       expect(result).toBe(false);
     });

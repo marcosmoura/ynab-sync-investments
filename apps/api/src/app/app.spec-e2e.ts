@@ -13,7 +13,9 @@ describe('AppController (e2e)', () => {
       imports: [AppModule],
     }).compile();
 
-    app = moduleFixture.createNestApplication();
+    app = moduleFixture.createNestApplication({
+      logger: false, // Disable NestJS logging for tests
+    });
     app.setGlobalPrefix('api'); // Set the same global prefix as in main.ts
     await app.init();
   });

@@ -22,7 +22,9 @@ describe('MarketDataController (e2e)', () => {
       .useValue(mockMarketDataService)
       .compile();
 
-    app = moduleFixture.createNestApplication();
+    app = moduleFixture.createNestApplication({
+      logger: false, // Disable NestJS logging for tests
+    });
     app.useGlobalPipes(new ValidationPipe({ transform: true }));
 
     await app.init();

@@ -123,6 +123,31 @@ describe('MarketDataController', () => {
   });
 });
 
+describe('AssetPriceResponseDto', () => {
+  it('should create instance with provided timestamp', () => {
+    const timestamp = new Date('2023-12-01T15:30:00Z');
+    const dto = new AssetPriceResponseDto('AAPL', 150.25, 'USD', timestamp);
+
+    expect(dto.symbol).toBe('AAPL');
+    expect(dto.price).toBe(150.25);
+    expect(dto.currency).toBe('USD');
+    expect(dto.timestamp).toBe(timestamp);
+  });
+
+  it('should create instance with default timestamp when not provided', () => {
+    const beforeCreation = Date.now();
+    const dto = new AssetPriceResponseDto('AAPL', 150.25, 'USD');
+    const afterCreation = Date.now();
+
+    expect(dto.symbol).toBe('AAPL');
+    expect(dto.price).toBe(150.25);
+    expect(dto.currency).toBe('USD');
+    expect(dto.timestamp).toBeInstanceOf(Date);
+    expect(dto.timestamp?.getTime()).toBeGreaterThanOrEqual(beforeCreation);
+    expect(dto.timestamp?.getTime()).toBeLessThanOrEqual(afterCreation);
+  });
+});
+
 describe('MarketDataService', () => {
   let service: MarketDataService;
 
@@ -235,6 +260,101 @@ describe('MarketDataService', () => {
         currency: 'USD',
       });
     });
+
+    it('should convert stock price to target currency when different from USD', async () => {
+      const mockStockResponse = {
+        'Global Quote': {
+          '05. price': '100.00',
+        },
+      };
+
+      const mockConversionResponse = {
+        rates: {
+          EUR: 0.85,
+        },
+      };
+
+      vi.mocked(global.fetch)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockStockResponse),
+        } as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockConversionResponse),
+        } as Response);
+
+      process.env.ALPHA_VANTAGE_API_KEY = 'test-key';
+
+      const result = await service.getAssetPrice('AAPL', 'EUR');
+
+      expect(result).toEqual({
+        symbol: 'AAPL',
+        price: 85.0, // 100 * 0.85
+        currency: 'EUR',
+      });
+    });
+
+    it('should fallback to USD price when currency conversion fails', async () => {
+      const mockStockResponse = {
+        'Global Quote': {
+          '05. price': '100.00',
+        },
+      };
+
+      vi.mocked(global.fetch)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockStockResponse),
+        } as Response)
+        .mockRejectedValueOnce(new Error('Currency conversion failed'));
+
+      process.env.ALPHA_VANTAGE_API_KEY = 'test-key';
+
+      const result = await service.getAssetPrice('AAPL', 'EUR');
+
+      expect(result).toEqual({
+        symbol: 'AAPL',
+        price: 100.0, // Fallback to USD price
+        currency: 'EUR',
+      });
+    });
+
+    it('should throw error when stock price not found in API response', async () => {
+      const mockResponse = {
+        'Global Quote': {
+          // Missing '05. price' field
+        },
+      };
+
+      vi.mocked(global.fetch).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      } as Response);
+
+      process.env.ALPHA_VANTAGE_API_KEY = 'test-key';
+
+      await expect(service.getAssetPrice('INVALID', 'USD')).rejects.toThrow(
+        'Failed to fetch price for INVALID',
+      );
+    });
+
+    it('should throw error when Global Quote is missing from API response', async () => {
+      const mockResponse = {
+        // Missing 'Global Quote' field
+      };
+
+      vi.mocked(global.fetch).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      } as Response);
+
+      process.env.ALPHA_VANTAGE_API_KEY = 'test-key';
+
+      await expect(service.getAssetPrice('INVALID', 'USD')).rejects.toThrow(
+        'Failed to fetch price for INVALID',
+      );
+    });
   });
 
   describe('convertCurrency', () => {
@@ -278,6 +398,44 @@ describe('MarketDataService', () => {
       // The service returns the original amount as fallback
       const result = await service.convertCurrency(50, 'INVALID', 'USD');
       expect(result).toBe(50);
+    });
+
+    it('should handle missing exchange rate gracefully', async () => {
+      const mockResponse = {
+        rates: {
+          // Missing target currency
+        },
+      };
+
+      vi.mocked(global.fetch).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      } as Response);
+
+      // The service returns the original amount as fallback
+      const result = await service.convertCurrency(100, 'EUR', 'INVALID');
+      expect(result).toBe(100);
+    });
+
+    it('should handle API response with invalid data', async () => {
+      const mockResponse = {}; // Missing rates property
+
+      vi.mocked(global.fetch).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      } as Response);
+
+      // The service returns the original amount as fallback
+      const result = await service.convertCurrency(50, 'EUR', 'USD');
+      expect(result).toBe(50);
+    });
+
+    it('should handle fetch rejection gracefully', async () => {
+      vi.mocked(global.fetch).mockRejectedValueOnce(new Error('Network error'));
+
+      // The service returns the original amount as fallback
+      const result = await service.convertCurrency(75, 'EUR', 'USD');
+      expect(result).toBe(75);
     });
   });
 });

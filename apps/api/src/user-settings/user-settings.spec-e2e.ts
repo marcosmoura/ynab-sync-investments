@@ -27,7 +27,9 @@ describe('UserSettingsController (e2e)', () => {
       ],
     }).compile();
 
-    app = moduleFixture.createNestApplication();
+    app = moduleFixture.createNestApplication({
+      logger: false, // Disable NestJS logging for tests
+    });
     app.setGlobalPrefix('api');
     userSettingsService = moduleFixture.get<UserSettingsService>(UserSettingsService);
     await app.init();

@@ -424,6 +424,88 @@ describe('YnabService', () => {
       );
     });
 
+    it('should reconcile account balance with positive adjustment memo', async () => {
+      const mockBudgetsResponse = {
+        data: {
+          budgets: [{ id: 'budget-123' }],
+        },
+      };
+
+      const mockAccountResponse = {
+        data: {
+          account: {
+            id: 'account-123',
+            balance: 1000000, // $1000.00 in milliunits
+          },
+        },
+      };
+
+      global.fetch = vi
+        .fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockBudgetsResponse),
+        } as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockAccountResponse),
+        } as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({}),
+        } as Response);
+
+      await service.reconcileAccountBalance('test-token', 'account-123', 1200.0);
+
+      const fetchMock = vi.mocked(fetch);
+      const thirdCall = fetchMock.mock.calls[2];
+      const requestBody = thirdCall?.[1] as RequestInit;
+      const thirdCallBody = JSON.parse(requestBody.body as string);
+      expect(thirdCallBody.transaction.memo).toContain('+200.00');
+      expect(thirdCallBody.transaction.memo).toContain('Current: 1000.00 → Target: 1200.00');
+    });
+
+    it('should reconcile account balance with negative adjustment memo', async () => {
+      const mockBudgetsResponse = {
+        data: {
+          budgets: [{ id: 'budget-123' }],
+        },
+      };
+
+      const mockAccountResponse = {
+        data: {
+          account: {
+            id: 'account-123',
+            balance: 1000000, // $1000.00 in milliunits
+          },
+        },
+      };
+
+      global.fetch = vi
+        .fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockBudgetsResponse),
+        } as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockAccountResponse),
+        } as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({}),
+        } as Response);
+
+      await service.reconcileAccountBalance('test-token', 'account-123', 800.0);
+
+      const fetchMock = vi.mocked(fetch);
+      const thirdCall = fetchMock.mock.calls[2];
+      const requestBody = thirdCall?.[1] as RequestInit;
+      const thirdCallBody = JSON.parse(requestBody.body as string);
+      expect(thirdCallBody.transaction.memo).toContain('-200.00');
+      expect(thirdCallBody.transaction.memo).toContain('Current: 1000.00 → Target: 800.00');
+    });
+
     it('should skip reconciliation when difference is less than 0.01', async () => {
       const mockBudgetsResponse = {
         data: {

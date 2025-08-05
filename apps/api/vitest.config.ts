@@ -21,6 +21,7 @@ export default defineConfig({
     environment: 'node',
     include: ['src/**/*.{spec,spec-e2e}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
     reporters: ['default'],
+    setupFiles: ['./src/test-setup.ts'],
     coverage: {
       reportsDirectory: '../../../coverage/apps/api/unit',
       provider: 'v8',

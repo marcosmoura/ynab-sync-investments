@@ -38,7 +38,9 @@ describe('AssetController (e2e)', () => {
       .useValue(mockRepository)
       .compile();
 
-    app = moduleFixture.createNestApplication();
+    app = moduleFixture.createNestApplication({
+      logger: false, // Disable NestJS logging for tests
+    });
     app.useGlobalPipes(new ValidationPipe({ transform: true }));
     app.setGlobalPrefix('api');
     repository = moduleFixture.get<Repository<Asset>>(getRepositoryToken(Asset));

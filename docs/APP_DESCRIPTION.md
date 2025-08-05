@@ -29,7 +29,7 @@ The apps should be self-contained, with their dependencies in their own package.
 
 ## Frontend
 
-This will be written by me, so no need to code anything related to it. But just as a summary, it will contain:
+This will be written later. But just as a summary, it will contain:
 
 - A homepage where the user can add the investments:
   - A button to add new that leads to a dialog where it is possible to add investments. The investments are not transactions but rather the total amount for a certain stock, bond, crypto...
@@ -69,3 +69,5 @@ This app is split in two different subjects:
 
 - An app that run with a cron job on a schedule that was chosen by the user on the frontend app.
   - Should go through the assets added, convert the amount based on the stock/crypto market, sum everything and sync with the correct accounts. The currency should be inferred by the YNAB API. It should convert to the correct currency.
+
+Disclaimer: The backend will is completely written by AI, powered by Claude Sonnet 4 and Claude Opus 4.

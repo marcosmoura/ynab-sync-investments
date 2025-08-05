@@ -15,7 +15,9 @@ describe('/docs (e2e)', () => {
       imports: [DocumentationModule],
     }).compile();
 
-    app = moduleFixture.createNestApplication();
+    app = moduleFixture.createNestApplication({
+      logger: false, // Disable NestJS logging for tests
+    });
     app.setGlobalPrefix('api');
 
     documentationService = moduleFixture.get<DocumentationService>(DocumentationService);
