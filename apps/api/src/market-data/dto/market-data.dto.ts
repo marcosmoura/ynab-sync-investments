@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsOptional, IsNumber, Min } from 'class-validator';
+import { Transform } from 'class-transformer';
+import { IsString, IsOptional, IsNumber, Min, IsNotEmpty } from 'class-validator';
 
 export class GetAssetPriceDto {
   @ApiProperty({
@@ -7,6 +8,7 @@ export class GetAssetPriceDto {
     example: 'AAPL',
   })
   @IsString()
+  @IsNotEmpty()
   symbol: string;
 
   @ApiProperty({
@@ -26,6 +28,7 @@ export class ConvertCurrencyDto {
     example: 100.5,
     minimum: 0,
   })
+  @Transform(({ value }) => Number(value))
   @IsNumber()
   @Min(0)
   amount: number;
@@ -35,6 +38,7 @@ export class ConvertCurrencyDto {
     example: 'EUR',
   })
   @IsString()
+  @IsNotEmpty()
   fromCurrency: string;
 
   @ApiProperty({
@@ -42,5 +46,6 @@ export class ConvertCurrencyDto {
     example: 'USD',
   })
   @IsString()
+  @IsNotEmpty()
   toCurrency: string;
 }

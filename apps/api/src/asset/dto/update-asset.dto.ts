@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNumber, IsString, IsUUID, IsPositive } from 'class-validator';
+import { IsNumber, IsString, IsUUID, IsPositive, IsOptional } from 'class-validator';
 
 export class UpdateAssetDto {
   @ApiProperty({
@@ -8,6 +8,7 @@ export class UpdateAssetDto {
     minimum: 0.01,
     required: false,
   })
+  @IsOptional()
   @IsNumber()
   @IsPositive()
   amount?: number;
@@ -18,6 +19,7 @@ export class UpdateAssetDto {
     format: 'uuid',
     required: false,
   })
+  @IsOptional()
   @IsString()
   @IsUUID()
   ynabAccountId?: string;

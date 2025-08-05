@@ -20,20 +20,41 @@ describe('AppController', () => {
 
   it('should be defined', () => {
     expect(controller).toBeDefined();
+    expect(appService).toBeDefined();
   });
 
   describe('getData', () => {
-    it('should return data from service', async () => {
-      const expectedData = {
+    it('should return correct application data', () => {
+      const result = controller.getData();
+
+      expect(result).toEqual({
         message: 'YNAB Investments Sync API',
         version: '1.0.0',
         status: 'running',
         documentation: '/api/docs',
+      });
+    });
+
+    it('should call appService.getData', () => {
+      const spy = vi.spyOn(appService, 'getData');
+
+      controller.getData();
+
+      expect(spy).toHaveBeenCalledOnce();
+    });
+
+    it('should return data from service', () => {
+      const expectedData = {
+        message: 'Test Message',
+        version: '2.0.0',
+        status: 'test',
+        documentation: '/test/docs',
       };
       vi.spyOn(appService, 'getData').mockReturnValue(expectedData);
 
-      expect(appService.getData).toHaveBeenCalled();
-      expect(await controller.getData()).toBe(expectedData);
+      const result = controller.getData();
+
+      expect(result).toEqual(expectedData);
     });
   });
 });

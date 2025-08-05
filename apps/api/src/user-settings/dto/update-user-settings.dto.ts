@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsEnum } from 'class-validator';
+import { IsString, IsEnum, IsOptional } from 'class-validator';
 
 import { SyncSchedule } from '@/shared/entities';
 
@@ -10,6 +10,7 @@ export class UpdateUserSettingsDto {
     type: 'string',
     required: false,
   })
+  @IsOptional()
   @IsString()
   ynabApiToken?: string;
 
@@ -19,6 +20,7 @@ export class UpdateUserSettingsDto {
     example: SyncSchedule.WEEKLY,
     required: false,
   })
+  @IsOptional()
   @IsEnum(SyncSchedule)
   syncSchedule?: SyncSchedule;
 }

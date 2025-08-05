@@ -19,7 +19,7 @@ export class SyncService {
     private readonly marketDataService: MarketDataService,
   ) {}
 
-  @Cron(CronExpression.EVERY_HOUR)
+  @Cron(CronExpression.EVERY_DAY_AT_8AM)
   async handleScheduledSync(): Promise<void> {
     try {
       const settings = await this.userSettingsService.findSettings();
@@ -97,6 +97,7 @@ export class SyncService {
         }
 
         // Update YNAB account balance
+        // TODO: Instead of updating balance, it should reconcile instead
         if (totalValue > 0) {
           await this.ynabService.updateAccountBalance(ynabApiToken, accountId, totalValue);
 
