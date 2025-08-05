@@ -11,8 +11,8 @@ import {
   UsePipes,
 } from '@nestjs/common';
 
-import { AssetService } from '../services';
-import { CreateAssetDto, UpdateAssetDto, AssetResponseDto } from '../dto';
+import { AssetService } from './asset.service';
+import { CreateAssetDto, UpdateAssetDto, AssetResponseDto } from './dto';
 
 @Controller('assets')
 export class AssetController {

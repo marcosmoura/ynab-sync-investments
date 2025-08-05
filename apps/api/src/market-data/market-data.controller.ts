@@ -1,7 +1,7 @@
 import { Controller, Get, Query, ValidationPipe, UsePipes } from '@nestjs/common';
 
-import { MarketDataService } from '../services';
-import { GetAssetPriceDto, ConvertCurrencyDto, AssetPriceResponseDto } from '../dto';
+import { MarketDataService } from './market-data.service';
+import { GetAssetPriceDto, ConvertCurrencyDto, AssetPriceResponseDto } from './dto';
 
 @Controller('market-data')
 export class MarketDataController {

@@ -2,12 +2,7 @@
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
   "namedInputs": {
     "default": ["{projectRoot}/**/*", "sharedGlobals"],
-    "production": [
-      "default",
-      "!{projectRoot}/**/?(*.)+(spec|test).[jt]s?(x)?(.snap)",
-      "!{projectRoot}/tsconfig.spec.json",
-      "!{projectRoot}/src/test-setup.[jt]s"
-    ],
+    "production": ["default", "!{projectRoot}/**/?(*.)+(spec|test|e2e).[jt]s?(x)?(.snap)"],
     "sharedGlobals": []
   },
   "plugins": [

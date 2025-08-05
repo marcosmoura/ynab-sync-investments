@@ -15,3 +15,4 @@
 - Postgres as the database
 - Docker for containerization
 - Docker Compose for local development
+- NestJS for the API, documented using OpenAPI

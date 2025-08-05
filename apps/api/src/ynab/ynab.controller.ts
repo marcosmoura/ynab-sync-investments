@@ -1,8 +1,8 @@
 import { Controller, Post, Body, Inject, forwardRef } from '@nestjs/common';
-import { SyncService } from '@/sync/services';
+import { SyncService } from '@/sync/sync.service';
 
-import { YnabService } from '../services';
-import { YnabAccountDto } from '../dto';
+import { YnabService } from './ynab.service';
+import { YnabAccountDto } from './dto';
 
 @Controller('ynab')
 export class YnabController {

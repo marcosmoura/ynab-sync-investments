@@ -3,8 +3,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { Asset } from '@/shared/entities';
 
-import { AssetController } from './controllers';
-import { AssetService } from './services';
+import { AssetController } from './asset.controller';
+import { AssetService } from './asset.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Asset])],

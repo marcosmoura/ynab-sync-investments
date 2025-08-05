@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Body, Patch, ValidationPipe, UsePipes } from '@nestjs/common';
-import { UserSettingsService } from '../services';
-import { CreateUserSettingsDto, UpdateUserSettingsDto, UserSettingsResponseDto } from '../dto';
+import { UserSettingsService } from './user-settings.service';
+import { CreateUserSettingsDto, UpdateUserSettingsDto, UserSettingsResponseDto } from './dto';
 
 @Controller('settings')
 export class UserSettingsController {

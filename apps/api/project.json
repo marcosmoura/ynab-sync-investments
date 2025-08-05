@@ -38,18 +38,9 @@
       "executor": "@nx/vite:test",
       "outputs": ["{workspaceRoot}/coverage/apps/api/unit"],
       "options": {
-        "config": "apps/api/vitest.unit.config.ts",
+        "config": "apps/api/vitest.config.ts",
         "passWithNoTests": true
       }
-    },
-    "e2e": {
-      "executor": "@nx/vite:test",
-      "outputs": ["{workspaceRoot}/coverage/apps/api/e2e"],
-      "options": {
-        "config": "apps/api/vitest.e2e.config.ts",
-        "passWithNoTests": true
-      },
-      "dependsOn": ["build", "serve"]
     },
     "typecheck": {
       "executor": "nx:run-commands",

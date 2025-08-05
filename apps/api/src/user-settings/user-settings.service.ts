@@ -4,7 +4,7 @@ import { Repository } from 'typeorm';
 
 import { UserSettings } from '@/shared/entities';
 
-import { CreateUserSettingsDto, UpdateUserSettingsDto, UserSettingsResponseDto } from '../dto';
+import { CreateUserSettingsDto, UpdateUserSettingsDto, UserSettingsResponseDto } from './dto';
 
 @Injectable()
 export class UserSettingsService {

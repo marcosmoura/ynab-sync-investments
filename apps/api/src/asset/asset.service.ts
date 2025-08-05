@@ -4,7 +4,7 @@ import { Repository } from 'typeorm';
 
 import { Asset } from '@/shared/entities';
 
-import { CreateAssetDto, UpdateAssetDto, AssetResponseDto } from '../dto';
+import { CreateAssetDto, UpdateAssetDto, AssetResponseDto } from './dto';
 
 @Injectable()
 export class AssetService {

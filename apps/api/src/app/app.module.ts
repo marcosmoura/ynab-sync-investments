@@ -4,14 +4,15 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 
 import { Asset, UserSettings } from '@/shared/entities';
+import * as migrations from '@/shared/migrations';
 import { AssetModule } from '@/asset';
 import { MarketDataModule } from '@/market-data';
 import { SyncModule } from '@/sync';
 import { UserSettingsModule } from '@/user-settings';
 import { YnabModule } from '@/ynab';
 
-import { AppController } from './controllers';
-import { AppService } from './services';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
 
 @Module({
   imports: [
@@ -30,7 +31,7 @@ import { AppService } from './services';
         password: configService.get('DB_PASSWORD', 'password'),
         database: configService.get('DB_NAME', 'ynab_investments'),
         entities: [Asset, UserSettings],
-        migrations: [__dirname + '/../shared/migrations/*{.ts,.js}'],
+        migrations: Object.values(migrations),
         migrationsTableName: 'migrations',
         migrationsRun: true, // Auto-run migrations on startup
         synchronize: false, // Never use synchronize in production

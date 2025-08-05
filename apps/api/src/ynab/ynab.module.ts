@@ -1,7 +1,7 @@
 import { Module, forwardRef } from '@nestjs/common';
-import { YnabController } from './controllers';
-import { YnabService } from './services';
-import { SyncModule } from '../sync';
+import { YnabController } from './ynab.controller';
+import { YnabService } from './ynab.service';
+import { SyncModule } from '@/sync';
 
 @Module({
   imports: [forwardRef(() => SyncModule)],

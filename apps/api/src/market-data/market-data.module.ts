@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
-import { MarketDataService } from './services';
-import { MarketDataController } from './controllers';
+import { MarketDataService } from './market-data.service';
+import { MarketDataController } from './market-data.controller';
 
 @Module({
   controllers: [MarketDataController],

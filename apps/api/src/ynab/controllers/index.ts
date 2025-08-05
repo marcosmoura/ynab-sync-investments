@@ -1,1 +1,0 @@
-export * from './ynab.controller';

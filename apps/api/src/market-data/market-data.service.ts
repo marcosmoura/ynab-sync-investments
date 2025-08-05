@@ -1,18 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
-import axios, { AxiosInstance } from 'axios';
 
-import { AssetPriceResponseDto } from '../dto';
+import { AssetPriceResponseDto } from './dto';
 
 @Injectable()
 export class MarketDataService {
   private readonly logger = new Logger(MarketDataService.name);
-  private axiosInstance: AxiosInstance;
-
-  constructor() {
-    this.axiosInstance = axios.create({
-      timeout: 10000,
-    });
-  }
+  private readonly timeout = 10000;
 
   async getAssetPrice(
     symbol: string,
@@ -36,6 +29,23 @@ export class MarketDataService {
     } catch (error) {
       this.logger.error(`Failed to fetch price for ${symbol}`, error);
       throw new Error(`Failed to fetch price for ${symbol}`);
+    }
+  }
+
+  private async fetchWithTimeout(url: string, options?: RequestInit): Promise<Response> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), this.timeout);
+
+    try {
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      return response;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      throw error;
     }
   }
 
@@ -72,10 +82,11 @@ export class MarketDataService {
 
   private async getCryptoPrice(symbol: string, targetCurrency: string): Promise<number> {
     // Example CoinGecko API call (you'd need to implement this)
-    // const response = await this.axiosInstance.get(
+    // const response = await this.fetchWithTimeout(
     //   `https://api.coingecko.com/api/v3/simple/price?ids=${symbol}&vs_currencies=${targetCurrency}`
     // );
-    // return response.data[symbol][targetCurrency.toLowerCase()];
+    // const data = await response.json();
+    // return data[symbol][targetCurrency.toLowerCase()];
 
     console.log(symbol, targetCurrency);
 
@@ -85,10 +96,11 @@ export class MarketDataService {
 
   private async getStockPrice(symbol: string, targetCurrency: string): Promise<number> {
     // Example Alpha Vantage API call (you'd need an API key)
-    // const response = await this.axiosInstance.get(
+    // const response = await this.fetchWithTimeout(
     //   `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${API_KEY}`
     // );
-    // return parseFloat(response.data['Global Quote']['05. price']);
+    // const data = await response.json();
+    // return parseFloat(data['Global Quote']['05. price']);
 
     console.log(symbol, targetCurrency);
 

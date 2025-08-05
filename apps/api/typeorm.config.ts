@@ -15,6 +15,6 @@ export default new DataSource({
   entities: ['src/shared/entities/*.entity{.ts,.js}'],
   migrations: ['src/shared/migrations/*{.ts,.js}'],
   migrationsTableName: 'migrations',
-  synchronize: false,
+  synchronize: ['development', 'test'].includes(process.env.NODE_ENV!) || false,
   logging: process.env.NODE_ENV === 'development',
 });

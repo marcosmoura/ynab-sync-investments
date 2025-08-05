@@ -1,11 +1,11 @@
 import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
-import { AssetService } from '@/asset/services';
-import { MarketDataService } from '@/market-data/services';
+import { AssetService } from '@/asset/asset.service';
+import { MarketDataService } from '@/market-data/market-data.service';
 import { SyncSchedule } from '@/shared/entities';
-import { UserSettingsService } from '@/user-settings/services';
-import { YnabService } from '@/ynab/services';
+import { UserSettingsService } from '@/user-settings/user-settings.service';
+import { YnabService } from '@/ynab/ynab.service';
 
 @Injectable()
 export class SyncService {

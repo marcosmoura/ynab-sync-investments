@@ -1,6 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import axios, { AxiosInstance } from 'axios';
-import { YnabAccountDto } from '../dto';
+import { YnabAccountDto } from './dto';
 
 interface YnabApiAccount {
   id: string;
@@ -12,34 +11,47 @@ interface YnabApiAccount {
 @Injectable()
 export class YnabService {
   private readonly logger = new Logger(YnabService.name);
-  private axiosInstance: AxiosInstance;
-
-  constructor() {
-    this.axiosInstance = axios.create({
-      baseURL: 'https://api.youneedabudget.com/v1',
-      timeout: 10000,
-    });
-  }
+  private readonly baseURL = 'https://api.youneedabudget.com/v1';
+  private authHeader: string = '';
 
   private setAuthHeader(token: string): void {
-    this.axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    this.authHeader = `Bearer ${token}`;
+  }
+
+  private async fetchWithAuth(endpoint: string, options: RequestInit = {}): Promise<Response> {
+    const response = await fetch(`${this.baseURL}${endpoint}`, {
+      ...options,
+      headers: {
+        Authorization: this.authHeader,
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return response;
   }
 
   async getAccounts(token: string): Promise<YnabAccountDto[]> {
     try {
       this.setAuthHeader(token);
-      const response = await this.axiosInstance.get('/budgets');
+      const response = await this.fetchWithAuth('/budgets');
+      const data = await response.json();
 
       // Get the first budget (assuming single budget setup)
-      const budgets = response.data.data.budgets;
+      const budgets = data.data.budgets;
       if (!budgets || budgets.length === 0) {
         throw new Error('No budgets found in YNAB account');
       }
 
       const budgetId = budgets[0].id;
-      const accountsResponse = await this.axiosInstance.get(`/budgets/${budgetId}/accounts`);
+      const accountsResponse = await this.fetchWithAuth(`/budgets/${budgetId}/accounts`);
+      const accountsData = await accountsResponse.json();
 
-      return accountsResponse.data.data.accounts.map((account: YnabApiAccount) => ({
+      return accountsData.data.accounts.map((account: YnabApiAccount) => ({
         id: account.id,
         name: account.name,
         type: account.type,
@@ -57,8 +69,9 @@ export class YnabService {
       this.setAuthHeader(token);
 
       // Get budget ID first
-      const budgetsResponse = await this.axiosInstance.get('/budgets');
-      const budgets = budgetsResponse.data.data.budgets;
+      const budgetsResponse = await this.fetchWithAuth('/budgets');
+      const budgetsData = await budgetsResponse.json();
+      const budgets = budgetsData.data.budgets;
       if (!budgets || budgets.length === 0) {
         throw new Error('No budgets found in YNAB account');
       }
@@ -78,8 +91,9 @@ export class YnabService {
         date: new Date().toISOString().split('T')[0], // Today's date in YYYY-MM-DD format
       };
 
-      await this.axiosInstance.post(`/budgets/${budgetId}/transactions`, {
-        transaction,
+      await this.fetchWithAuth(`/budgets/${budgetId}/transactions`, {
+        method: 'POST',
+        body: JSON.stringify({ transaction }),
       });
 
       this.logger.log(`Successfully updated account ${accountId} balance to ${balance}`);
