@@ -1,5 +1,9 @@
 {
   "name": "@ynab-investments-sync/web",
   "version": "0.1.0",
-  "private": true
+  "private": true,
+  "devDependencies": {
+    "@playwright/test": "^1.54.2",
+    "vite": "^6.0.0"
+  }
 }

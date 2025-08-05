@@ -12,9 +12,8 @@ export default new DataSource({
   username: process.env.DB_USERNAME || 'postgres',
   password: process.env.DB_PASSWORD || 'password',
   database: process.env.DB_NAME || 'ynab_investments',
-  entities: ['src/shared/entities/*.entity{.ts,.js}'],
-  migrations: ['src/shared/migrations/*{.ts,.js}'],
-  migrationsTableName: 'migrations',
-  synchronize: ['development', 'test'].includes(process.env.NODE_ENV ?? 'production') || false,
+  entities: ['src/**/*.entity.ts'],
+  migrations: ['src/shared/migrations/*.ts'],
+  synchronize: false,
   logging: process.env.NODE_ENV === 'development',
 });
