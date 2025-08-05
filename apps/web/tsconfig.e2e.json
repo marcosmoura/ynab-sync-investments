@@ -8,7 +8,7 @@
     "noEmit": false,
     "outDir": "../../dist/out-tsc",
     "sourceMap": false,
-    "types": ["node", "@playwright/test"]
+    "types": ["node", "@playwright/test", "vite/client"]
   },
   "include": ["playwright.config.ts", "src/**/*.e2e.ts", "src/**/*.e2e.js", "src/**/*.e2e.d.ts"]
 }

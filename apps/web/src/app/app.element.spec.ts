@@ -1,3 +1,5 @@
+import { beforeEach, describe, expect, it } from 'vitest';
+
 import { AppElement } from './app.element';
 
 describe('AppElement', () => {
@@ -14,6 +16,6 @@ describe('AppElement', () => {
   it('should have a greeting', () => {
     app.connectedCallback();
 
-    expect(app.querySelector('h1').innerHTML).toContain('Welcome web');
+    expect(app.querySelector('h1')?.innerHTML).toContain('Welcome web');
   });
 });

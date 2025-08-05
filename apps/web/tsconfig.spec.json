@@ -4,12 +4,13 @@
     "composite": true,
     "declaration": true,
     "module": "esnext",
+    "noEmit": false,
     "outDir": "../../dist/out-tsc",
     "paths": {
       "*": ["./*"],
       "@/*": ["./src/*"]
     },
-    "types": ["vitest/globals", "node"]
+    "types": ["vitest/globals", "node", "vite/client"]
   },
   "include": ["src/**/*.spec.ts"]
 }
