@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 import { SyncService } from '@/sync/sync.service';
 
-import { YnabAccountDto } from './dto';
+import { YnabAccountDto, YnabBudgetDto } from './dto';
 import { YnabController } from './ynab.controller';
 import { YnabService } from './ynab.service';
 
@@ -19,6 +19,7 @@ describe('YnabController', () => {
         {
           provide: YnabService,
           useValue: {
+            getBudgets: vi.fn(),
             getAccounts: vi.fn(),
             updateAccountBalance: vi.fn(),
             reconcileAccountBalance: vi.fn(),
@@ -36,6 +37,56 @@ describe('YnabController', () => {
     ynabService = moduleRef.get(YnabService);
     syncService = moduleRef.get(SyncService);
     controller = moduleRef.get(YnabController);
+  });
+
+  describe('getBudgets', () => {
+    it('should return YNAB budgets', async () => {
+      const mockBudgets: YnabBudgetDto[] = [
+        {
+          id: 'budget-123',
+          name: 'My Budget',
+          currency: 'USD',
+          lastModifiedOn: new Date('2023-01-01T00:00:00Z'),
+          firstMonth: '2023-01',
+          lastMonth: '2023-12',
+        },
+        {
+          id: 'budget-456',
+          name: 'Another Budget',
+          currency: 'EUR',
+          lastModifiedOn: new Date('2023-02-01T00:00:00Z'),
+          firstMonth: '2023-01',
+          lastMonth: '2023-12',
+        },
+      ];
+
+      vi.spyOn(ynabService, 'getBudgets').mockResolvedValue(mockBudgets);
+
+      const result = await controller.getBudgets('test-token');
+
+      expect(ynabService.getBudgets).toHaveBeenCalledWith('test-token');
+      expect(result).toEqual(mockBudgets);
+      expect(result).toHaveLength(2);
+      expect(result[0].name).toBe('My Budget');
+      expect(result[1].name).toBe('Another Budget');
+    });
+
+    it('should handle service errors', async () => {
+      vi.spyOn(ynabService, 'getBudgets').mockRejectedValue(new Error('Invalid token'));
+
+      await expect(controller.getBudgets('invalid-token')).rejects.toThrow('Invalid token');
+      expect(ynabService.getBudgets).toHaveBeenCalledWith('invalid-token');
+    });
+
+    it('should return empty array when no budgets found', async () => {
+      vi.spyOn(ynabService, 'getBudgets').mockResolvedValue([]);
+
+      const result = await controller.getBudgets('test-token');
+
+      expect(ynabService.getBudgets).toHaveBeenCalledWith('test-token');
+      expect(result).toEqual([]);
+      expect(result).toHaveLength(0);
+    });
   });
 
   describe('getAccounts', () => {
@@ -238,8 +289,120 @@ describe('YnabService', () => {
     service = moduleRef.get(YnabService);
   });
 
+  describe('getBudgets', () => {
+    it('should fetch budgets from YNAB API', async () => {
+      const mockBudgetsResponse = {
+        data: {
+          budgets: [
+            {
+              id: 'budget-123',
+              name: 'My Budget',
+              last_modified_on: '2023-01-01T00:00:00Z',
+              first_month: '2023-01',
+              last_month: '2023-12',
+              currency_format: { iso_code: 'USD' },
+            },
+            {
+              id: 'budget-456',
+              name: 'Another Budget',
+              last_modified_on: '2023-02-01T00:00:00Z',
+              first_month: '2023-01',
+              last_month: '2023-12',
+              currency_format: { iso_code: 'EUR' },
+            },
+          ],
+        },
+      };
+
+      global.fetch = vi.fn().mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockBudgetsResponse),
+      } as Response);
+
+      const result = await service.getBudgets('test-token');
+
+      expect(fetch).toHaveBeenCalledTimes(1);
+      expect(fetch).toHaveBeenCalledWith('https://api.youneedabudget.com/v1/budgets', {
+        headers: {
+          Authorization: 'Bearer test-token',
+          'Content-Type': 'application/json',
+        },
+      });
+
+      expect(result).toHaveLength(2);
+      expect(result[0]).toEqual({
+        id: 'budget-123',
+        name: 'My Budget',
+        currency: 'USD',
+        lastModifiedOn: new Date('2023-01-01T00:00:00Z'),
+        firstMonth: '2023-01',
+        lastMonth: '2023-12',
+      });
+      expect(result[1]).toEqual({
+        id: 'budget-456',
+        name: 'Another Budget',
+        currency: 'EUR',
+        lastModifiedOn: new Date('2023-02-01T00:00:00Z'),
+        firstMonth: '2023-01',
+        lastMonth: '2023-12',
+      });
+    });
+
+    it('should return empty array when no budgets found', async () => {
+      const mockBudgetsResponse = {
+        data: { budgets: [] },
+      };
+
+      global.fetch = vi.fn().mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockBudgetsResponse),
+      } as Response);
+
+      const result = await service.getBudgets('test-token');
+
+      expect(result).toEqual([]);
+    });
+
+    it('should use default currency when currency format is missing', async () => {
+      const mockBudgetsResponse = {
+        data: {
+          budgets: [
+            {
+              id: 'budget-123',
+              name: 'My Budget',
+              last_modified_on: '2023-01-01T00:00:00Z',
+              first_month: '2023-01',
+              last_month: '2023-12',
+              currency_format: null,
+            },
+          ],
+        },
+      };
+
+      global.fetch = vi.fn().mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockBudgetsResponse),
+      } as Response);
+
+      const result = await service.getBudgets('test-token');
+
+      expect(result[0].currency).toBe('USD');
+    });
+
+    it('should handle API errors', async () => {
+      global.fetch = vi.fn().mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+      } as Response);
+
+      await expect(service.getBudgets('invalid-token')).rejects.toThrow(
+        'Failed to fetch YNAB budgets',
+      );
+    });
+  });
+
   describe('getAccounts', () => {
-    it('should fetch accounts from YNAB API', async () => {
+    it('should fetch accounts from YNAB API without budget ID', async () => {
       const mockBudgetsResponse = {
         data: {
           budgets: [
@@ -315,6 +478,73 @@ describe('YnabService', () => {
         type: 'checking',
         balance: 50, // Converted from milliunits
         currency: 'USD',
+      });
+    });
+
+    it('should fetch accounts from YNAB API with specific budget ID', async () => {
+      const mockBudgetResponse = {
+        data: {
+          budget: {
+            currency_format: { iso_code: 'EUR' },
+          },
+        },
+      };
+
+      const mockAccountsResponse = {
+        data: {
+          accounts: [
+            {
+              id: 'account-123',
+              name: 'Investment Account',
+              type: 'investmentAccount',
+              balance: 150000, // In milliunits
+            },
+          ],
+        },
+      };
+
+      global.fetch = vi
+        .fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockBudgetResponse),
+        } as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockAccountsResponse),
+        } as Response);
+
+      const result = await service.getAccounts('test-token', 'budget-456');
+
+      expect(fetch).toHaveBeenCalledTimes(2);
+      expect(fetch).toHaveBeenNthCalledWith(
+        1,
+        'https://api.youneedabudget.com/v1/budgets/budget-456',
+        {
+          headers: {
+            Authorization: 'Bearer test-token',
+            'Content-Type': 'application/json',
+          },
+        },
+      );
+      expect(fetch).toHaveBeenNthCalledWith(
+        2,
+        'https://api.youneedabudget.com/v1/budgets/budget-456/accounts',
+        {
+          headers: {
+            Authorization: 'Bearer test-token',
+            'Content-Type': 'application/json',
+          },
+        },
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual({
+        id: 'account-123',
+        name: 'Investment Account',
+        type: 'investmentAccount',
+        balance: 150, // Converted from milliunits
+        currency: 'EUR',
       });
     });
 
@@ -546,9 +776,20 @@ describe('YnabService', () => {
           body: expect.stringContaining('"account_id":"account-123"'),
         }),
       );
+
+      // Verify transaction details
+      const fetchMock = vi.mocked(fetch);
+      const thirdCall = fetchMock.mock.calls[2];
+      const requestBody = thirdCall?.[1] as RequestInit;
+      const thirdCallBody = JSON.parse(requestBody.body as string);
+      expect(thirdCallBody.transaction.payee_name).toBe('Investment Portfolio Reconciliation');
+      expect(thirdCallBody.transaction.amount).toBe(500750); // $500.75 in milliunits
+      expect(thirdCallBody.transaction.memo).toBe('1000.00 → 1500.75');
+      expect(thirdCallBody.transaction.cleared).toBe('cleared');
+      expect(thirdCallBody.transaction.approved).toBe(true);
     });
 
-    it('should reconcile account balance with positive adjustment memo', async () => {
+    it('should reconcile account balance with asset symbols in memo', async () => {
       const mockBudgetsResponse = {
         data: {
           budgets: [{ id: 'budget-123' }],
@@ -579,17 +820,19 @@ describe('YnabService', () => {
           json: () => Promise.resolve({}),
         } as Response);
 
-      await service.reconcileAccountBalance('test-token', 'account-123', 1200.0);
+      await service.reconcileAccountBalance('test-token', 'account-123', 1200.0, undefined, [
+        'AAPL',
+        'MSFT',
+      ]);
 
       const fetchMock = vi.mocked(fetch);
       const thirdCall = fetchMock.mock.calls[2];
       const requestBody = thirdCall?.[1] as RequestInit;
       const thirdCallBody = JSON.parse(requestBody.body as string);
-      expect(thirdCallBody.transaction.memo).toContain('+200.00');
-      expect(thirdCallBody.transaction.memo).toContain('Current: 1000.00 → Target: 1200.00');
+      expect(thirdCallBody.transaction.memo).toBe('1000.00 → 1200.00 (AAPL, MSFT)');
     });
 
-    it('should reconcile account balance with negative adjustment memo', async () => {
+    it('should reconcile account balance with empty memo when no asset symbols', async () => {
       const mockBudgetsResponse = {
         data: {
           budgets: [{ id: 'budget-123' }],
@@ -626,8 +869,7 @@ describe('YnabService', () => {
       const thirdCall = fetchMock.mock.calls[2];
       const requestBody = thirdCall?.[1] as RequestInit;
       const thirdCallBody = JSON.parse(requestBody.body as string);
-      expect(thirdCallBody.transaction.memo).toContain('-200.00');
-      expect(thirdCallBody.transaction.memo).toContain('Current: 1000.00 → Target: 800.00');
+      expect(thirdCallBody.transaction.memo).toBe('1000.00 → 800.00');
     });
 
     it('should skip reconciliation when difference is less than 0.01', async () => {
@@ -688,6 +930,67 @@ describe('YnabService', () => {
         service.reconcileAccountBalance('invalid-token', 'account-123', 1500),
       ).rejects.toThrow('Failed to reconcile account balance');
       expect(fetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('should handle account fetch errors during reconciliation', async () => {
+      const mockBudgetsResponse = {
+        data: {
+          budgets: [{ id: 'budget-123' }],
+        },
+      };
+
+      global.fetch = vi
+        .fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockBudgetsResponse),
+        } as Response)
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 404,
+        } as Response);
+
+      await expect(
+        service.reconcileAccountBalance('test-token', 'invalid-account', 1500),
+      ).rejects.toThrow('Failed to reconcile account balance');
+      expect(fetch).toHaveBeenCalledTimes(2);
+    });
+
+    it('should handle transaction creation errors during reconciliation', async () => {
+      const mockBudgetsResponse = {
+        data: {
+          budgets: [{ id: 'budget-123' }],
+        },
+      };
+
+      const mockAccountResponse = {
+        data: {
+          account: {
+            id: 'account-123',
+            balance: 1000000, // $1000.00 in milliunits
+          },
+        },
+      };
+
+      global.fetch = vi
+        .fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockBudgetsResponse),
+        } as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockAccountResponse),
+        } as Response)
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 400,
+        } as Response);
+
+      await expect(
+        service.reconcileAccountBalance('test-token', 'account-123', 1500),
+      ).rejects.toThrow('Failed to reconcile account balance');
+      expect(fetch).toHaveBeenCalledTimes(3);
     });
   });
 });

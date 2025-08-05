@@ -53,7 +53,7 @@ The playground uses the following test assets:
 - **MSFT**: 5 shares Microsoft
 - **VOO**: 15 shares Vanguard S&P 500 ETF
 - **NVDA**: 8 shares NVIDIA
-- **NQSE.DE**: 20 shares (German market)
+- **IBM**: 20 shares IBM
 
 ## Running the Playground
 

@@ -12,6 +12,7 @@ import { UserSettingsService } from './user-settings.service';
 describe('UserSettingsController (e2e)', () => {
   let app: INestApplication;
   let userSettingsService: UserSettingsService;
+  let ynabService: YnabService;
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -40,6 +41,7 @@ describe('UserSettingsController (e2e)', () => {
     });
     app.setGlobalPrefix('api');
     userSettingsService = moduleFixture.get<UserSettingsService>(UserSettingsService);
+    ynabService = moduleFixture.get<YnabService>(YnabService);
     await app.init();
   });
 
@@ -47,6 +49,80 @@ describe('UserSettingsController (e2e)', () => {
     if (app) {
       await app.close();
     }
+  });
+
+  describe('POST /api/settings/budgets', () => {
+    it('should get available YNAB budgets successfully', async () => {
+      const token = 'ynab-token-12345';
+      const mockBudgets = [
+        {
+          id: 'budget-1',
+          name: 'Personal Budget',
+          currency: 'USD',
+          lastModifiedOn: new Date('2023-12-01T10:30:00Z'),
+          firstMonth: '2023-01-01',
+          lastMonth: '2023-12-31',
+        },
+        {
+          id: 'budget-2',
+          name: 'Business Budget',
+          currency: 'EUR',
+          lastModifiedOn: new Date('2023-12-01T15:45:00Z'),
+          firstMonth: '2023-01-01',
+          lastMonth: '2023-12-31',
+        },
+      ];
+
+      vi.spyOn(ynabService, 'getBudgets').mockResolvedValue(mockBudgets);
+
+      const response = await request(app.getHttpServer())
+        .post('/api/settings/budgets')
+        .send({ token })
+        .expect(200);
+
+      expect(response.body).toEqual(
+        mockBudgets.map((budget) => ({
+          ...budget,
+          lastModifiedOn: budget.lastModifiedOn.toISOString(),
+        })),
+      );
+      expect(ynabService.getBudgets).toHaveBeenCalledWith(token);
+    });
+
+    it('should handle missing token', async () => {
+      await request(app.getHttpServer()).post('/api/settings/budgets').send({}).expect(400);
+    });
+
+    it('should handle invalid token', async () => {
+      const token = 'invalid-token';
+
+      vi.spyOn(ynabService, 'getBudgets').mockRejectedValue(new Error('Invalid YNAB API token'));
+
+      await request(app.getHttpServer()).post('/api/settings/budgets').send({ token }).expect(500);
+
+      expect(ynabService.getBudgets).toHaveBeenCalledWith(token);
+    });
+
+    it('should return empty array when no budgets found', async () => {
+      const token = 'valid-token-no-budgets';
+
+      vi.spyOn(ynabService, 'getBudgets').mockResolvedValue([]);
+
+      const response = await request(app.getHttpServer())
+        .post('/api/settings/budgets')
+        .send({ token })
+        .expect(200);
+
+      expect(response.body).toEqual([]);
+      expect(ynabService.getBudgets).toHaveBeenCalledWith(token);
+    });
+
+    it('should handle malformed request body', async () => {
+      await request(app.getHttpServer())
+        .post('/api/settings/budgets')
+        .send('invalid-json')
+        .expect(400);
+    });
   });
 
   describe('POST /api/settings', () => {

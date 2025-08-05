@@ -203,11 +203,9 @@ export class YnabService {
       const reconciliationAmountInMilliunits = Math.round(reconciliationAmount * 1000);
 
       // Create a comprehensive memo with current balance, target balance, adjustment amount, and asset symbols
-      const sign = reconciliationAmount > 0 ? '+' : '';
-      const adjustmentDisplay = `${sign}${reconciliationAmount.toFixed(2)}`;
-      const balanceInfo = `Current: ${currentBalance.toFixed(2)} → Target: ${targetBalance.toFixed(2)}`;
+      const balanceInfo = `${currentBalance.toFixed(2)} → ${targetBalance.toFixed(2)}`;
       const assetInfo = assetSymbols?.length > 0 ? ` (${assetSymbols?.join(', ')})` : '';
-      const memo = `${adjustmentDisplay} | ${balanceInfo}${assetInfo}`;
+      const memo = `${balanceInfo}${assetInfo}`;
 
       const transaction = {
         account_id: accountId,

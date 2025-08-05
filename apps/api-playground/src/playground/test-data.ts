@@ -75,7 +75,7 @@ export class TestData {
         ynabAccountId: investmentAccountId,
       },
       {
-        symbol: 'NQSE.DE',
+        symbol: 'IBM',
         amount: 20,
         ynabAccountId: investmentAccountId,
       },
