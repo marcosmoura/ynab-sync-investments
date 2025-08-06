@@ -38,8 +38,11 @@ The API includes the following endpoint groups:
 
 #### **Market Data**
 
-- `GET /market-data/asset-price` - Get current asset price
-- `GET /market-data/convert-currency` - Convert currency amount
+- `POST /market-data/asset-prices` - Get current asset prices for multiple symbols
+
+#### **Sync**
+
+- `POST /sync/manual` - Trigger manual synchronization to YNAB
 
 #### **User Settings**
 
@@ -49,8 +52,11 @@ The API includes the following endpoint groups:
 
 #### **YNAB Integration**
 
+- `POST /ynab/budgets` - Get YNAB budgets
 - `POST /ynab/accounts` - Get YNAB accounts
-- `POST /ynab/sync` - Trigger manual synchronization
+- `POST /ynab/accounts/update-balance` - Update YNAB account balance
+- `POST /ynab/accounts/reconcile-balance` - Reconcile YNAB account balance
+- `POST /ynab/sync` - Trigger portfolio sync (legacy endpoint)
 
 ### 🏗️ Implementation Details
 

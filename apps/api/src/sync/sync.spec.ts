@@ -1,4 +1,4 @@
-import { Test } from '@nestjs/testing';
+import { Test, TestingModule } from '@nestjs/testing';
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 
 import { AssetService } from '@/asset/asset.service';
@@ -8,6 +8,7 @@ import { UserSettingsResponseDto } from '@/user-settings/dto';
 import { UserSettingsService } from '@/user-settings/user-settings.service';
 import { YnabService } from '@/ynab/ynab.service';
 
+import { SyncController } from './sync.controller';
 import { SyncService } from './sync.service';
 
 describe('SyncService', () => {
@@ -661,6 +662,58 @@ describe('SyncService', () => {
       await expect(service.triggerManualSync()).rejects.toThrow(
         'No user settings found. Please configure the application first.',
       );
+    });
+  });
+});
+
+describe('SyncController', () => {
+  let controller: SyncController;
+  let syncService: SyncService;
+
+  beforeEach(async () => {
+    const mockSyncService = {
+      triggerManualSync: vi.fn(),
+    };
+
+    const module: TestingModule = await Test.createTestingModule({
+      controllers: [SyncController],
+      providers: [
+        {
+          provide: SyncService,
+          useValue: mockSyncService,
+        },
+      ],
+    }).compile();
+
+    controller = module.get<SyncController>(SyncController);
+    syncService = module.get<SyncService>(SyncService);
+  });
+
+  it('should be defined', () => {
+    expect(controller).toBeDefined();
+  });
+
+  describe('triggerManualSync', () => {
+    it('should trigger manual sync and return success message', async () => {
+      // Arrange
+      vi.mocked(syncService.triggerManualSync).mockResolvedValue();
+
+      // Act
+      const result = await controller.triggerManualSync();
+
+      // Assert
+      expect(syncService.triggerManualSync).toHaveBeenCalledTimes(1);
+      expect(result).toEqual({ message: 'Manual sync completed successfully' });
+    });
+
+    it('should throw error when sync service fails', async () => {
+      // Arrange
+      const error = new Error('Sync failed');
+      vi.mocked(syncService.triggerManualSync).mockRejectedValue(error);
+
+      // Act & Assert
+      await expect(controller.triggerManualSync()).rejects.toThrow('Sync failed');
+      expect(syncService.triggerManualSync).toHaveBeenCalledTimes(1);
     });
   });
 });
