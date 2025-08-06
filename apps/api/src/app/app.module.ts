@@ -6,6 +6,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AssetModule } from '@/asset';
 import { Asset, UserSettings } from '@/database/entities';
 import { DocumentationModule } from '@/documentation';
+import { FileSyncModule } from '@/file-sync';
 import { MarketDataModule } from '@/market-data';
 import { SyncModule } from '@/sync';
 import { UserSettingsModule } from '@/user-settings';
@@ -41,6 +42,7 @@ import { AppService } from './app.service';
     }),
     AssetModule,
     DocumentationModule,
+    FileSyncModule,
     MarketDataModule,
     SyncModule,
     UserSettingsModule,

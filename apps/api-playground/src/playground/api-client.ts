@@ -159,4 +159,10 @@ export class ApiClient {
       method: 'POST',
     });
   }
+
+  async triggerFileSync(): Promise<{ message: string }> {
+    return this.request('/file-sync/trigger', {
+      method: 'POST',
+    });
+  }
 }

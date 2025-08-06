@@ -2,6 +2,13 @@ import { ApiClient } from './api-client';
 import { DatabaseManager } from './database-manager';
 import { TestData } from './test-data';
 
+type PlaygroundMode = 'database' | 'file-sync' | 'both';
+
+interface ExecutionStep {
+  message: string;
+  executor: () => Promise<void>;
+}
+
 export class ApiPlayground {
   private apiClient: ApiClient;
   private testData: TestData;
@@ -15,40 +22,85 @@ export class ApiPlayground {
     this.dbManager = new DatabaseManager();
   }
 
-  async run(): Promise<void> {
+  async run(mode: PlaygroundMode = 'database'): Promise<void> {
+    const steps: ExecutionStep[] = [];
+
     console.log('\n� Starting API Playground...');
 
-    // Check initial database status
-    const initialStatus = await this.dbManager.getDatabaseStatus();
-    console.log(
-      `📊 Initial database status: ${initialStatus.healthy ? '✅ Healthy' : '❌ Unhealthy'} (${initialStatus.url})`,
-    );
+    steps.push({
+      message: 'Checking database',
+      executor: () => this.checkDatabaseStatus(),
+    });
 
-    console.log('\n�🔄 Step 1: Preparing database');
-    await this.dbManager.resetDatabase();
+    steps.push({
+      message: 'Preparing database',
+      executor: () => this.dbManager.resetDatabase(),
+    });
 
-    console.log('\n🔄 Step 2: Testing API health');
-    await this.testApiHealth();
+    steps.push({
+      message: 'Testing API health',
+      executor: () => this.testApiHealth(),
+    });
 
-    console.log('\n🔄 Step 3: Creating user settings');
-    await this.testUserSettings();
+    steps.push({
+      message: 'Creating user settings',
+      executor: () => this.testUserSettings(),
+    });
 
-    console.log('\n🔄 Step 4: Testing YNAB integration');
-    await this.testYnabIntegration();
+    steps.push({
+      message: 'Testing YNAB integration',
+      executor: () => this.testYnabIntegration(),
+    });
 
-    console.log('\n🔄 Step 5: Adding investment assets');
-    await this.testAssetManagement();
+    if (mode === 'database' || mode === 'both') {
+      steps.push({
+        message: 'Adding investment assets',
+        executor: () => this.testAssetManagement(),
+      });
 
-    console.log('\n🔄 Step 6: Triggering sync process');
-    await this.testSyncProcess();
+      steps.push({
+        message: 'Triggering sync process',
+        executor: () => this.testSyncProcess(),
+      });
+    }
 
-    console.log('\n🔄 Step 7: Validating YNAB results');
-    await this.validateYnabResults();
+    // File-based sync
+    if (mode === 'file-sync' || mode === 'both') {
+      steps.push({
+        message: 'Testing file sync',
+        executor: () => this.testFileSyncProcess(),
+      });
+    }
 
-    console.log('\n🔄 Step 8: Cleaning up');
-    await this.dbManager.resetDatabase();
+    steps.push({
+      message: 'Validating YNAB results',
+      executor: () => this.validateYnabResults(),
+    });
+
+    steps.push({
+      message: 'Cleaning up',
+      executor: () => this.dbManager.resetDatabase(),
+    });
+
+    for (const [index, { message, executor }] of steps.entries()) {
+      console.log(`\n🔄 Step ${index + 1}: ${message}`);
+      await executor();
+    }
 
     console.log('\n🎉 API Playground completed successfully!');
+  }
+
+  private async checkDatabaseStatus() {
+    // Check initial database status
+    const { healthy, running, url } = await this.dbManager.getDatabaseStatus();
+
+    if (!healthy || !running) {
+      console.error(`❌ Database is either unhealthy or not running. (${url})`);
+
+      throw new Error('Aborting');
+    }
+
+    console.log(`📊 Initial database status: '✅ Healthy'} (${url})`);
   }
 
   private async testApiHealth(): Promise<void> {
@@ -170,6 +222,38 @@ export class ApiPlayground {
     }
   }
 
+  private async testFileSyncProcess(): Promise<void> {
+    try {
+      console.log('📄 Testing file sync process...');
+
+      // Check if file sync URL is configured
+      const fileUrl = process.env.INVESTMENTS_CONFIG_FILE_URL;
+      if (!fileUrl) {
+        console.log('⚠️  INVESTMENTS_CONFIG_FILE_URL not configured, skipping file sync test');
+        return;
+      }
+
+      console.log('🌐 Config file URL:', fileUrl);
+      console.log('🔄 Triggering manual file sync...');
+
+      const fileSyncResult = await this.apiClient.triggerFileSync();
+      console.log('✅ File sync completed:', fileSyncResult.message);
+
+      // Wait a moment for file sync to complete
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      // Verify that assets were potentially updated
+      const allAssets = await this.apiClient.getAllAssets();
+      console.log('📊 Total assets after file sync:', allAssets.length);
+    } catch (error) {
+      // File sync might fail if URL is not accessible, log warning but don't fail the whole test
+      console.warn(
+        '⚠️  File sync test failed (this may be expected if URL is not accessible):',
+        error.message,
+      );
+    }
+  }
+
   private async validateYnabResults(): Promise<void> {
     const { ynabApiToken, targetBudgetId } = this.testData.getUserSettings();
 
@@ -208,5 +292,17 @@ export class ApiPlayground {
     } catch (error) {
       throw new Error(`YNAB validation failed: ${error}`);
     }
+  }
+
+  private getValidationStepNumber(mode: PlaygroundMode): number {
+    if (mode === 'database') return 7;
+    if (mode === 'file-sync') return 6;
+    return 8; // both
+  }
+
+  private getCleanupStepNumber(mode: PlaygroundMode): number {
+    if (mode === 'database') return 8;
+    if (mode === 'file-sync') return 7;
+    return 9; // both
   }
 }

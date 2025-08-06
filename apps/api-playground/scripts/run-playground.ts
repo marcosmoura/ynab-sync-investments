@@ -80,7 +80,9 @@ console.log('🎮 Running playground...\n');
 
 console.log(playgroundPath, '\n');
 
-const runProcess = spawn('node', [playgroundPath], {
+// Forward command-line arguments to the main process
+const args = process.argv.slice(2);
+const runProcess = spawn('node', [playgroundPath, ...args], {
   stdio: 'inherit',
 });
 

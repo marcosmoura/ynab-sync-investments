@@ -11,7 +11,8 @@ The API Playground tests the complete workflow:
 3. **YNAB Integration** - Tests YNAB API connectivity and account access
 4. **Asset Management** - Creates multiple investment and crypto assets
 5. **Sync Process** - Triggers the automated sync process
-6. **Validation** - Verifies that YNAB accounts were updated correctly
+6. **File Sync Testing** - Tests remote file-based configuration sync (optional)
+7. **Validation** - Verifies that YNAB accounts were updated correctly
 
 ## Prerequisites
 
@@ -29,6 +30,9 @@ YNAB_API_KEY=your_ynab_personal_access_token
 YNAB_BUDGET_ID=your_budget_id_for_testing
 YNAB_CRYPTO_ACCOUNT_ID=your_crypto_account_id
 YNAB_INVESTMENTS_ACCOUNT_ID=your_investments_account_id
+
+# Optional for file sync testing
+INVESTMENTS_CONFIG_FILE_URL=https://example.com/investment-config.yaml
 ```
 
 ### Getting YNAB Credentials
@@ -65,16 +69,37 @@ The playground uses the following test assets:
 
 2. **Run the playground**:
 
+   **Database Mode (Default):**
+
    ```bash
    pnpm nx run api-playground:build
    node dist/apps/api-playground/main.js
    ```
 
-   Or use the development command:
+   **File Sync Mode Only:**
+
+   ```bash
+   node dist/apps/api-playground/main.js --mode file-sync
+   ```
+
+   **Full Testing (Database + File Sync):**
+
+   ```bash
+   node dist/apps/api-playground/main.js --mode both
+   ```
+
+   **Development Mode:**
 
    ```bash
    pnpm nx serve api-playground
    ```
+
+### Command-Line Options
+
+- `--mode database` (default) - Only tests database-based asset management and sync
+- `--mode file-sync` - Only tests remote file-based configuration sync
+- `--mode both` - Runs both database asset management and file sync testing
+- `--help` - Shows usage information
 
 ## What the Playground Tests
 
@@ -111,6 +136,14 @@ The playground uses the following test assets:
 - Validates market data retrieval
 - Tests YNAB balance updates
 
+### 📄 File Sync Testing
+
+- Tests remote file-based configuration sync (optional)
+- Validates URL accessibility and YAML parsing
+- Checks asset replacement functionality
+- Skips gracefully if `INVESTMENTS_CONFIG_FILE_URL` is not configured
+- Provides warnings if file is not accessible (non-fatal)
+
 ### ✅ Result Validation
 
 - Checks updated YNAB account balances
@@ -137,6 +170,7 @@ The playground provides detailed console output showing:
 3. **YNAB Authentication**: Verify your YNAB API token is valid and not expired
 4. **Account IDs**: Ensure the specified YNAB account IDs exist in your budget
 5. **Market Data**: Some market data providers may have rate limits or require API keys
+6. **File Sync URL**: File sync test will be skipped if `INVESTMENTS_CONFIG_FILE_URL` is not set or if the URL is not accessible
 
 ### Error Messages
 

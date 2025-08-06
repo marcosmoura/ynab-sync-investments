@@ -1,0 +1,22 @@
+# YNAB Investment Sync Configuration
+# This file tells the system which YNAB budget and accounts to sync with your investments
+# This is a file in YAML format that should be hosted at a publicly accessible URL.
+# Set the INVESTMENTS_CONFIG_FILE_URL environment variable to point to your hosted file.
+
+# Your YNAB Budget ID (you can find this in YNAB's URL when viewing your budget)
+budget: 'id-of-ynab-budget-to-sync'
+
+# List your investment accounts below
+accounts:
+  # First Investment Account
+  - account_id: 'id-of-ynab-account-1-to-sync' # The YNAB account to sync to
+    holdings:
+      MSFT: 10 # Microsoft - 10 shares
+      AAPL: 20 # Apple - 20 shares
+      NVDA: 5 # Nvidia - 5 shares
+
+  # Second Investment Account
+  - account_id: 'id-of-ynab-account-2-to-sync' # The YNAB account to sync to
+    holdings:
+      BTC: 1.2 # Bitcoin - 1.2 BTC
+      ETH: 12.79 # Ethereum - 12.79 ETH
