@@ -162,6 +162,7 @@ describe('MarketDataService', () => {
     // Reset environment variables
     delete process.env.COINMARKETCAP_API_KEY;
     delete process.env.POLYGON_API_KEY;
+    delete process.env.ALPHA_VANTAGE_API_KEY;
   });
 
   afterEach(() => {
@@ -270,7 +271,128 @@ describe('MarketDataService', () => {
       });
     });
 
-    it('should try CoinMarketCap when Yahoo Finance fails and API key is available', async () => {
+    it('should fallback to Alpha Vantage when CoinMarketCap and Polygon fail', async () => {
+      process.env.COINMARKETCAP_API_KEY = 'test-key';
+      process.env.POLYGON_API_KEY = 'test-polygon-key';
+      process.env.ALPHA_VANTAGE_API_KEY = 'test-alpha-vantage-key';
+
+      // CoinMarketCap fails
+      vi.mocked(global.fetch).mockRejectedValueOnce(new Error('CoinMarketCap API Error'));
+
+      // Polygon stocks fails
+      vi.mocked(global.fetch).mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        text: () => Promise.resolve('Not found'),
+      } as Response);
+
+      // Polygon indices fails
+      vi.mocked(global.fetch).mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        text: () => Promise.resolve('Not found'),
+      } as Response);
+
+      // Alpha Vantage succeeds
+      const mockAlphaVantageResponse = {
+        'Global Quote': {
+          '01. symbol': 'AAPL',
+          '05. price': '150.75',
+        },
+      };
+
+      vi.mocked(global.fetch).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockAlphaVantageResponse),
+      } as Response);
+
+      const result = await service.getAssetPrice('AAPL', 'USD');
+
+      expect(result).toEqual({
+        symbol: 'AAPL',
+        price: 150.75,
+        currency: 'USD',
+      });
+
+      // Should have made calls to Alpha Vantage
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('alphavantage.co'),
+        expect.any(Object),
+      );
+    });
+
+    it('should handle Alpha Vantage error messages', async () => {
+      process.env.ALPHA_VANTAGE_API_KEY = 'test-alpha-vantage-key';
+
+      // Alpha Vantage returns error message
+      const mockAlphaVantageResponse = {
+        'Error Message': 'Invalid symbol',
+      };
+
+      vi.mocked(global.fetch).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockAlphaVantageResponse),
+      } as Response);
+
+      await expect(service.getAssetPrice('INVALID', 'USD')).rejects.toThrow(
+        'Failed to fetch price for INVALID: Unable to find asset in any provider',
+      );
+    });
+
+    it('should handle Alpha Vantage rate limit', async () => {
+      process.env.ALPHA_VANTAGE_API_KEY = 'test-alpha-vantage-key';
+
+      // Alpha Vantage returns rate limit message
+      const mockAlphaVantageResponse = {
+        Note: 'Thank you for using Alpha Vantage! Our standard API call frequency is 5 calls per minute and 500 calls per day.',
+      };
+
+      vi.mocked(global.fetch).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockAlphaVantageResponse),
+      } as Response);
+
+      await expect(service.getAssetPrice('AAPL', 'USD')).rejects.toThrow(
+        'Failed to fetch price for AAPL: Unable to find asset in any provider',
+      );
+    });
+
+    it('should convert currency with Alpha Vantage data', async () => {
+      process.env.ALPHA_VANTAGE_API_KEY = 'test-alpha-vantage-key';
+
+      const mockAlphaVantageResponse = {
+        'Global Quote': {
+          '01. symbol': 'AAPL',
+          '05. price': '150.00',
+        },
+      };
+
+      const mockCurrencyResponse = {
+        rates: {
+          EUR: 0.85,
+        },
+      };
+
+      vi.mocked(global.fetch)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockAlphaVantageResponse),
+        } as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockCurrencyResponse),
+        } as Response);
+
+      const result = await service.getAssetPrice('AAPL', 'EUR');
+
+      expect(result).toEqual({
+        symbol: 'AAPL',
+        price: 127.5, // 150 * 0.85
+        currency: 'EUR',
+      });
+    });
+
+    it('should fallback to CoinMarketCap when Yahoo Finance fails and API key is available', async () => {
       process.env.COINMARKETCAP_API_KEY = 'test-key';
 
       const mockCoinMarketCapResponse = {
@@ -719,6 +841,106 @@ describe('MarketDataService', () => {
       expect(global.fetch).toHaveBeenNthCalledWith(
         2,
         expect.stringContaining('polygon.io'),
+        expect.any(Object),
+      );
+    });
+
+    it('should use all three providers in order: CoinMarketCap -> Polygon -> Alpha Vantage', async () => {
+      process.env.COINMARKETCAP_API_KEY = 'test-key';
+      process.env.POLYGON_API_KEY = 'test-polygon-key';
+      process.env.ALPHA_VANTAGE_API_KEY = 'test-alpha-vantage-key';
+
+      // CoinMarketCap finds BTC
+      const mockCoinMarketCapResponse = {
+        data: {
+          BTC: [
+            {
+              symbol: 'BTC',
+              is_active: 1,
+              quote: {
+                USD: {
+                  price: 45000.0,
+                },
+              },
+            },
+          ],
+        },
+      };
+
+      // Polygon stocks: AAPL found, MSFT not found
+      const mockPolygonAAPLResponse = {
+        results: [
+          {
+            T: 'AAPL',
+            c: 150.0,
+          },
+        ],
+      };
+
+      const mockPolygonMSFTResponse = {
+        results: [],
+      };
+
+      // Polygon indices: MSFT not found
+      const mockPolygonMSFTIndicesResponse = {
+        results: [],
+      };
+
+      // Alpha Vantage finds MSFT
+      const mockAlphaVantageResponse = {
+        'Global Quote': {
+          '01. symbol': 'MSFT',
+          '05. price': '300.50',
+        },
+      };
+
+      vi.mocked(global.fetch)
+        // CoinMarketCap call
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockCoinMarketCapResponse),
+        } as Response)
+        // Polygon stock call for AAPL (found)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockPolygonAAPLResponse),
+        } as Response)
+        // Polygon stock call for MSFT (not found)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockPolygonMSFTResponse),
+        } as Response)
+        // Polygon indices call for MSFT (not found)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockPolygonMSFTIndicesResponse),
+        } as Response)
+        // Alpha Vantage call for MSFT
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockAlphaVantageResponse),
+        } as Response);
+
+      const result = await service.getAssetPrices(['BTC', 'AAPL', 'MSFT'], 'USD');
+
+      expect(result).toEqual([
+        { symbol: 'BTC', price: 45000.0, currency: 'USD' },
+        { symbol: 'AAPL', price: 150.0, currency: 'USD' },
+        { symbol: 'MSFT', price: 300.5, currency: 'USD' },
+      ]);
+
+      // Should make calls to all providers
+      expect(global.fetch).toHaveBeenCalledTimes(5); // CoinMarketCap, 2 Polygon stocks, 1 Polygon indices, Alpha Vantage
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('coinmarketcap.com'),
+        expect.any(Object),
+      );
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('polygon.io'),
+        expect.any(Object),
+      );
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('alphavantage.co'),
         expect.any(Object),
       );
     });
