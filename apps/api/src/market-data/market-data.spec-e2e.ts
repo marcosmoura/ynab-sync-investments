@@ -11,6 +11,7 @@ describe('MarketDataController (e2e)', () => {
 
   const mockMarketDataService = {
     getAssetPrice: vi.fn(),
+    getAssetPrices: vi.fn(),
     convertCurrency: vi.fn(),
   };
 
@@ -98,6 +99,74 @@ describe('MarketDataController (e2e)', () => {
         .expect(500);
 
       expect(mockMarketDataService.getAssetPrice).toHaveBeenCalledWith('INVALID', 'USD');
+    });
+  });
+
+  describe('/market-data/asset-prices (POST)', () => {
+    it('should get multiple asset prices', async () => {
+      const mockPrices = [
+        { symbol: 'AAPL', price: 150.0, currency: 'USD' },
+        { symbol: 'MSFT', price: 300.0, currency: 'USD' },
+      ];
+      mockMarketDataService.getAssetPrices.mockResolvedValue(mockPrices);
+
+      const response = await request(app.getHttpServer())
+        .post('/market-data/asset-prices')
+        .send({ symbols: ['AAPL', 'MSFT'], targetCurrency: 'USD' })
+        .expect(201);
+
+      expect(response.body).toMatchObject({
+        results: mockPrices,
+        notFound: [],
+        timestamp: expect.any(String),
+      });
+      expect(mockMarketDataService.getAssetPrices).toHaveBeenCalledWith(['AAPL', 'MSFT'], 'USD');
+    });
+
+    it('should handle partial results with not found symbols', async () => {
+      const mockPrices = [{ symbol: 'AAPL', price: 150.0, currency: 'USD' }];
+      mockMarketDataService.getAssetPrices.mockResolvedValue(mockPrices);
+
+      const response = await request(app.getHttpServer())
+        .post('/market-data/asset-prices')
+        .send({ symbols: ['AAPL', 'INVALID'], targetCurrency: 'USD' })
+        .expect(201);
+
+      expect(response.body).toMatchObject({
+        results: mockPrices,
+        notFound: ['INVALID'],
+        timestamp: expect.any(String),
+      });
+    });
+
+    it('should use default currency when not specified', async () => {
+      const mockPrices = [{ symbol: 'AAPL', price: 150.0, currency: 'USD' }];
+      mockMarketDataService.getAssetPrices.mockResolvedValue(mockPrices);
+
+      const _response = await request(app.getHttpServer())
+        .post('/market-data/asset-prices')
+        .send({ symbols: ['AAPL'] })
+        .expect(201);
+
+      expect(mockMarketDataService.getAssetPrices).toHaveBeenCalledWith(['AAPL'], 'USD');
+    });
+
+    it('should return 400 when symbols array is empty', async () => {
+      await request(app.getHttpServer())
+        .post('/market-data/asset-prices')
+        .send({ symbols: [] })
+        .expect(400);
+
+      expect(mockMarketDataService.getAssetPrices).not.toHaveBeenCalled();
+    });
+
+    it('should return 400 when symbols is missing', async () => {
+      await request(app.getHttpServer())
+        .post('/market-data/asset-prices')
+        .send({ targetCurrency: 'USD' })
+        .expect(400);
+
+      expect(mockMarketDataService.getAssetPrices).not.toHaveBeenCalled();
     });
   });
 

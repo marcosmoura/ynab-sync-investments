@@ -2,6 +2,7 @@ import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
 import { AssetService } from '@/asset/asset.service';
+import { AssetResponseDto } from '@/asset/dto';
 import { SyncSchedule } from '@/database/entities';
 import { MarketDataService } from '@/market-data/market-data.service';
 import { UserSettingsResponseDto } from '@/user-settings/dto';
@@ -50,7 +51,7 @@ export class SyncService {
       }
 
       // Group assets by YNAB account
-      const assetsByAccount = new Map<string, typeof assets>();
+      const assetsByAccount = new Map<string, AssetResponseDto[]>();
 
       for (const asset of assets) {
         if (!assetsByAccount.has(asset.ynabAccountId)) {
@@ -70,6 +71,49 @@ export class SyncService {
         userSettings.targetBudgetId,
       );
 
+      // Collect all unique symbols and their target currencies
+      const symbolsByCurrency = new Map<string, Set<string>>();
+
+      for (const [accountId, accountAssets] of assetsByAccount) {
+        const ynabAccount = ynabAccounts.find((acc) => acc.id === accountId);
+
+        if (!ynabAccount) {
+          continue;
+        }
+
+        if (!symbolsByCurrency.has(ynabAccount.currency)) {
+          symbolsByCurrency.set(ynabAccount.currency, new Set());
+        }
+
+        const currencySymbols = symbolsByCurrency.get(ynabAccount.currency);
+        accountAssets.forEach((asset) => currencySymbols?.add(asset.symbol));
+      }
+
+      // Fetch all asset prices in bulk for each currency
+      const pricesByCurrency = new Map<string, Map<string, { price: number; currency: string }>>();
+
+      for (const [currency, symbols] of symbolsByCurrency) {
+        try {
+          const assetPrices = await this.marketDataService.getAssetPrices(
+            Array.from(symbols),
+            currency,
+          );
+
+          const pricesMap = new Map<string, { price: number; currency: string }>();
+          assetPrices.forEach((assetPrice) => {
+            pricesMap.set(assetPrice.symbol.toUpperCase(), {
+              price: assetPrice.price,
+              currency: assetPrice.currency,
+            });
+          });
+
+          pricesByCurrency.set(currency, pricesMap);
+        } catch (error) {
+          this.logger.error(`Failed to fetch prices for currency ${currency}: ${error.message}`);
+          pricesByCurrency.set(currency, new Map());
+        }
+      }
+
       // Sync each account
       for (const [accountId, accountAssets] of assetsByAccount) {
         const ynabAccount = ynabAccounts.find((acc) => acc.id === accountId);
@@ -80,24 +124,40 @@ export class SyncService {
         }
 
         let totalValue = 0;
+        const pricesMap = pricesByCurrency.get(ynabAccount.currency);
+
+        if (!pricesMap) {
+          this.logger.warn(
+            `No prices available for currency ${ynabAccount.currency}, skipping account`,
+          );
+          continue;
+        }
 
         // Calculate total value for all assets in this account
         for (const asset of accountAssets) {
-          try {
-            const assetPrice = await this.marketDataService.getAssetPrice(
-              asset.symbol,
-              ynabAccount.currency,
-            );
+          const assetPrice = pricesMap.get(asset.symbol.toUpperCase());
 
-            const assetValue = asset.amount * assetPrice.price;
-            totalValue += assetValue;
-
-            this.logger.log(
-              `Asset ${asset.symbol}: ${asset.amount} x ${assetPrice.price} ${ynabAccount.currency} = ${assetValue}`,
-            );
-          } catch (error) {
-            this.logger.error(`Failed to get price for ${asset.symbol}`, error);
+          if (!assetPrice) {
+            this.logger.warn(`Price not found for ${asset.symbol}, skipping asset`);
+            continue;
           }
+
+          // Check if we got a valid price
+          if (!assetPrice.price || assetPrice.price <= 0) {
+            this.logger.warn(
+              `Invalid price received for ${asset.symbol}: ${assetPrice.price}, skipping asset`,
+            );
+            continue;
+          }
+
+          const price = assetPrice.price;
+          const currency = assetPrice.currency ?? ynabAccount.currency;
+          const assetValue = asset.amount * price;
+          totalValue += assetValue;
+
+          this.logger.log(
+            `Asset ${asset.symbol}: ${asset.amount} x ${price} ${currency} = ${assetValue.toFixed(2)}`,
+          );
         }
 
         // Reconcile YNAB account balance with calculated portfolio value

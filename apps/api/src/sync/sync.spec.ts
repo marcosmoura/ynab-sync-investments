@@ -36,7 +36,7 @@ describe('SyncService', () => {
   };
 
   const mockMarketDataService = {
-    getAssetPrice: vi.fn(),
+    getAssetPrices: vi.fn(),
   };
 
   beforeEach(async () => {
@@ -155,6 +155,269 @@ describe('SyncService', () => {
       { id: 'account-2', name: 'Investment Account 2', currency: 'EUR' },
     ];
 
+    it('should handle NQSE.DE and other European symbols correctly', async () => {
+      const mockEuropeanAssets = [
+        {
+          id: '1',
+          symbol: 'AAPL',
+          amount: 10,
+          ynabAccountId: 'account-1',
+        },
+        {
+          id: '2',
+          symbol: 'NQSE.DE', // German ETF symbol
+          amount: 5,
+          ynabAccountId: 'account-1',
+        },
+        {
+          id: '3',
+          symbol: 'ASML.AS', // Dutch stock symbol
+          amount: 3,
+          ynabAccountId: 'account-1',
+        },
+        {
+          id: '4',
+          symbol: 'BTC',
+          amount: 0.1,
+          ynabAccountId: 'account-2',
+        },
+      ];
+
+      mockAssetService.findAll.mockResolvedValue(mockEuropeanAssets);
+      mockYnabService.getAccounts.mockResolvedValue(mockYnabAccounts);
+
+      // Mock market data responses - European symbols handled by Polygon.io
+      mockMarketDataService.getAssetPrices
+        .mockResolvedValueOnce([
+          { symbol: 'AAPL', price: 150.0, currency: 'USD' },
+          { symbol: 'NQSE.DE', price: 85.5, currency: 'USD' }, // Polygon.io handles this
+          { symbol: 'ASML.AS', price: 750.0, currency: 'USD' }, // Polygon.io handles this too
+        ])
+        .mockResolvedValueOnce([{ symbol: 'BTC', price: 45000.0, currency: 'EUR' }]);
+
+      mockYnabService.reconcileAccountBalance.mockResolvedValue(undefined);
+
+      await service.performSync(mockUserSettings);
+
+      expect(mockAssetService.findAll).toHaveBeenCalled();
+      expect(mockYnabService.getAccounts).toHaveBeenCalledWith('test-token', null);
+
+      // Verify market data calls include all symbols (CoinMarketCap filters, Polygon.io handles all)
+      expect(mockMarketDataService.getAssetPrices).toHaveBeenCalledWith(
+        ['AAPL', 'NQSE.DE', 'ASML.AS'],
+        'USD',
+      );
+      expect(mockMarketDataService.getAssetPrices).toHaveBeenCalledWith(['BTC'], 'EUR');
+
+      // Verify YNAB account balance includes all assets with correct calculations
+      expect(mockYnabService.reconcileAccountBalance).toHaveBeenCalledWith(
+        'test-token',
+        'account-1',
+        4177.5, // AAPL: 10*150 + NQSE.DE: 5*85.50 + ASML.AS: 3*750 = 1500 + 427.5 + 2250 = 4177.5
+        null,
+        ['AAPL', 'NQSE.DE', 'ASML.AS'],
+      );
+      expect(mockYnabService.reconcileAccountBalance).toHaveBeenCalledWith(
+        'test-token',
+        'account-2',
+        4500, // BTC: 0.1 * 45000 = 4500
+        null,
+        ['BTC'],
+      );
+    });
+
+    it('should handle mixed symbols where some fail price lookup', async () => {
+      const mockMixedAssets = [
+        {
+          id: '1',
+          symbol: 'AAPL',
+          amount: 10,
+          ynabAccountId: 'account-1',
+        },
+        {
+          id: '2',
+          symbol: 'NQSE.DE',
+          amount: 5,
+          ynabAccountId: 'account-1',
+        },
+        {
+          id: '3',
+          symbol: 'UNKNOWN.SYM', // This symbol won't be found
+          amount: 3,
+          ynabAccountId: 'account-1',
+        },
+      ];
+
+      mockAssetService.findAll.mockResolvedValue(mockMixedAssets);
+      mockYnabService.getAccounts.mockResolvedValue([mockYnabAccounts[0]]);
+
+      // Mock market data - UNKNOWN.SYM not found, NQSE.DE found
+      mockMarketDataService.getAssetPrices.mockResolvedValueOnce([
+        { symbol: 'AAPL', price: 150.0, currency: 'USD' },
+        { symbol: 'NQSE.DE', price: 85.5, currency: 'USD' },
+        // UNKNOWN.SYM is missing from response (no price found)
+      ]);
+
+      mockYnabService.reconcileAccountBalance.mockResolvedValue(undefined);
+
+      await service.performSync(mockUserSettings);
+
+      // Should only reconcile with assets that have valid prices
+      expect(mockYnabService.reconcileAccountBalance).toHaveBeenCalledWith(
+        'test-token',
+        'account-1',
+        1927.5, // Only AAPL: 10*150 + NQSE.DE: 5*85.50 = 1500 + 427.5 = 1927.5
+        null,
+        ['AAPL', 'NQSE.DE', 'UNKNOWN.SYM'], // All symbols passed, but only valid ones used
+      );
+    });
+
+    it('should handle NQSE.DE with currency conversion', async () => {
+      const mockEuroAssets = [
+        {
+          id: '1',
+          symbol: 'NQSE.DE',
+          amount: 10,
+          ynabAccountId: 'account-eur',
+        },
+      ];
+
+      const mockEuroAccounts = [
+        { id: 'account-eur', name: 'European Investment Account', currency: 'EUR' },
+      ];
+
+      mockAssetService.findAll.mockResolvedValue(mockEuroAssets);
+      mockYnabService.getAccounts.mockResolvedValue(mockEuroAccounts);
+
+      // Mock market data with EUR currency
+      mockMarketDataService.getAssetPrices.mockResolvedValueOnce([
+        { symbol: 'NQSE.DE', price: 75.8, currency: 'EUR' }, // Price in EUR
+      ]);
+
+      mockYnabService.reconcileAccountBalance.mockResolvedValue(undefined);
+
+      await service.performSync(mockUserSettings);
+
+      // Verify the call was made with EUR currency
+      expect(mockMarketDataService.getAssetPrices).toHaveBeenCalledWith(['NQSE.DE'], 'EUR');
+
+      // Verify reconciliation with EUR values
+      expect(mockYnabService.reconcileAccountBalance).toHaveBeenCalledWith(
+        'test-token',
+        'account-eur',
+        758, // NQSE.DE: 10 * 75.80 = 758 EUR
+        null,
+        ['NQSE.DE'],
+      );
+    });
+
+    it('should handle symbols with special characters correctly', async () => {
+      const mockAssetsWithSpecialChars = [
+        {
+          id: '1',
+          symbol: 'AAPL',
+          amount: 10,
+          ynabAccountId: 'account-1',
+        },
+        {
+          id: '2',
+          symbol: 'NQSE.DE', // Symbol with special characters
+          amount: 5,
+          ynabAccountId: 'account-1',
+        },
+        {
+          id: '3',
+          symbol: 'BTC',
+          amount: 0.5,
+          ynabAccountId: 'account-2',
+        },
+      ];
+
+      mockAssetService.findAll.mockResolvedValue(mockAssetsWithSpecialChars);
+      mockYnabService.getAccounts.mockResolvedValue(mockYnabAccounts);
+
+      // Mock market data prices - NQSE.DE should be handled by Polygon.io, not CoinMarketCap
+      mockMarketDataService.getAssetPrices
+        .mockResolvedValueOnce([
+          { symbol: 'AAPL', price: 150.0, currency: 'USD' },
+          { symbol: 'NQSE.DE', price: 100.0, currency: 'USD' }, // Polygon.io can handle this
+        ])
+        .mockResolvedValueOnce([{ symbol: 'BTC', price: 40000.0, currency: 'EUR' }]);
+
+      mockYnabService.reconcileAccountBalance.mockResolvedValue(undefined);
+
+      await service.performSync(mockUserSettings);
+
+      expect(mockAssetService.findAll).toHaveBeenCalled();
+      expect(mockYnabService.getAccounts).toHaveBeenCalledWith('test-token', null);
+
+      // Verify market data calls - should include both regular and special character symbols
+      expect(mockMarketDataService.getAssetPrices).toHaveBeenCalledWith(['AAPL', 'NQSE.DE'], 'USD');
+      expect(mockMarketDataService.getAssetPrices).toHaveBeenCalledWith(['BTC'], 'EUR');
+
+      // Verify YNAB account balance reconciliation includes both assets
+      expect(mockYnabService.reconcileAccountBalance).toHaveBeenCalledWith(
+        'test-token',
+        'account-1',
+        2000, // AAPL: 10 * 150 + NQSE.DE: 5 * 100 = 1500 + 500 = 2000
+        null,
+        ['AAPL', 'NQSE.DE'],
+      );
+      expect(mockYnabService.reconcileAccountBalance).toHaveBeenCalledWith(
+        'test-token',
+        'account-2',
+        20000, // BTC: 0.5 * 40000 = 20000
+        null,
+        ['BTC'],
+      );
+    });
+
+    it('should skip assets with invalid prices', async () => {
+      const mockAssetsWithInvalidPrices = [
+        {
+          id: '1',
+          symbol: 'AAPL',
+          amount: 10,
+          ynabAccountId: 'account-1',
+        },
+        {
+          id: '2',
+          symbol: 'INVALID',
+          amount: 5,
+          ynabAccountId: 'account-1',
+        },
+        {
+          id: '3',
+          symbol: 'ZERO_PRICE',
+          amount: 3,
+          ynabAccountId: 'account-1',
+        },
+      ];
+
+      mockAssetService.findAll.mockResolvedValue(mockAssetsWithInvalidPrices);
+      mockYnabService.getAccounts.mockResolvedValue([mockYnabAccounts[0]]);
+
+      // Mock market data prices with some invalid scenarios
+      mockMarketDataService.getAssetPrices.mockResolvedValueOnce([
+        { symbol: 'AAPL', price: 150.0, currency: 'USD' },
+        // INVALID symbol has no price data (missing from response)
+        { symbol: 'ZERO_PRICE', price: 0, currency: 'USD' }, // Invalid price (0)
+      ]);
+
+      mockYnabService.reconcileAccountBalance.mockResolvedValue(undefined);
+
+      await service.performSync(mockUserSettings);
+
+      // Should only reconcile with AAPL value (INVALID and ZERO_PRICE are skipped)
+      expect(mockYnabService.reconcileAccountBalance).toHaveBeenCalledWith(
+        'test-token',
+        'account-1',
+        1500, // Only AAPL: 10 * 150 = 1500
+        null,
+        ['AAPL', 'INVALID', 'ZERO_PRICE'], // All symbols passed, but only valid ones used in calculation
+      );
+    });
+
     it('should skip sync when no assets found', async () => {
       mockAssetService.findAll.mockResolvedValue([]);
 
@@ -168,11 +431,13 @@ describe('SyncService', () => {
       mockAssetService.findAll.mockResolvedValue(mockAssets);
       mockYnabService.getAccounts.mockResolvedValue(mockYnabAccounts);
 
-      // Mock market data prices
-      mockMarketDataService.getAssetPrice
-        .mockResolvedValueOnce({ symbol: 'AAPL', price: 150.0, currency: 'USD' })
-        .mockResolvedValueOnce({ symbol: 'MSFT', price: 300.0, currency: 'USD' })
-        .mockResolvedValueOnce({ symbol: 'BTC', price: 40000.0, currency: 'EUR' });
+      // Mock market data prices for bulk requests
+      mockMarketDataService.getAssetPrices
+        .mockResolvedValueOnce([
+          { symbol: 'AAPL', price: 150.0, currency: 'USD' },
+          { symbol: 'MSFT', price: 300.0, currency: 'USD' },
+        ])
+        .mockResolvedValueOnce([{ symbol: 'BTC', price: 40000.0, currency: 'EUR' }]);
 
       mockYnabService.reconcileAccountBalance.mockResolvedValue(undefined);
 
@@ -181,10 +446,9 @@ describe('SyncService', () => {
       expect(mockAssetService.findAll).toHaveBeenCalled();
       expect(mockYnabService.getAccounts).toHaveBeenCalledWith('test-token', null);
 
-      // Verify market data calls
-      expect(mockMarketDataService.getAssetPrice).toHaveBeenCalledWith('AAPL', 'USD');
-      expect(mockMarketDataService.getAssetPrice).toHaveBeenCalledWith('MSFT', 'USD');
-      expect(mockMarketDataService.getAssetPrice).toHaveBeenCalledWith('BTC', 'EUR');
+      // Verify market data calls - should be called once per currency
+      expect(mockMarketDataService.getAssetPrices).toHaveBeenCalledWith(['AAPL', 'MSFT'], 'USD');
+      expect(mockMarketDataService.getAssetPrices).toHaveBeenCalledWith(['BTC'], 'EUR');
 
       // Verify YNAB account balance reconciliation
       expect(mockYnabService.reconcileAccountBalance).toHaveBeenCalledWith(
@@ -217,17 +481,19 @@ describe('SyncService', () => {
       mockAssetService.findAll.mockResolvedValue(assetsWithUnknownAccount);
       mockYnabService.getAccounts.mockResolvedValue(mockYnabAccounts);
 
-      mockMarketDataService.getAssetPrice
-        .mockResolvedValueOnce({ symbol: 'AAPL', price: 150.0, currency: 'USD' })
-        .mockResolvedValueOnce({ symbol: 'MSFT', price: 300.0, currency: 'USD' })
-        .mockResolvedValueOnce({ symbol: 'BTC', price: 40000.0, currency: 'EUR' });
+      mockMarketDataService.getAssetPrices
+        .mockResolvedValueOnce([
+          { symbol: 'AAPL', price: 150.0, currency: 'USD' },
+          { symbol: 'MSFT', price: 300.0, currency: 'USD' },
+        ])
+        .mockResolvedValueOnce([{ symbol: 'BTC', price: 40000.0, currency: 'EUR' }]);
 
       mockYnabService.reconcileAccountBalance.mockResolvedValue(undefined);
 
       await service.performSync(mockUserSettings);
 
-      // Should only call for known accounts
-      expect(mockMarketDataService.getAssetPrice).toHaveBeenCalledTimes(3);
+      // Should only call for known accounts and their currencies
+      expect(mockMarketDataService.getAssetPrices).toHaveBeenCalledTimes(2);
       expect(mockYnabService.reconcileAccountBalance).toHaveBeenCalledTimes(2);
     });
 
@@ -236,7 +502,7 @@ describe('SyncService', () => {
       mockYnabService.getAccounts.mockResolvedValue(mockYnabAccounts);
 
       // Mock market data to throw error
-      mockMarketDataService.getAssetPrice.mockRejectedValue(new Error('Price not available'));
+      mockMarketDataService.getAssetPrices.mockRejectedValue(new Error('Price not available'));
 
       mockYnabService.reconcileAccountBalance.mockResolvedValue(undefined);
 

@@ -30,12 +30,12 @@ export class TestData {
     return [
       {
         symbol: 'BTC',
-        amount: 0.32,
+        amount: 1,
         ynabAccountId: cryptoAccountId,
       },
       {
         symbol: 'ETH',
-        amount: 1.5,
+        amount: 2,
         ynabAccountId: cryptoAccountId,
       },
       {
@@ -76,6 +76,11 @@ export class TestData {
       },
       {
         symbol: 'IBM',
+        amount: 20,
+        ynabAccountId: investmentAccountId,
+      },
+      {
+        symbol: 'NQSE.DE',
         amount: 20,
         ynabAccountId: investmentAccountId,
       },

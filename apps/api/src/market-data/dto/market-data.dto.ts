@@ -1,6 +1,14 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsString, IsOptional, IsNumber, Min, IsNotEmpty } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsNumber,
+  Min,
+  IsNotEmpty,
+  ArrayNotEmpty,
+  IsArray,
+} from 'class-validator';
 
 export class GetAssetPriceDto {
   @ApiProperty({
@@ -13,6 +21,29 @@ export class GetAssetPriceDto {
 
   @ApiProperty({
     description: 'Target currency for the price',
+    example: 'USD',
+    default: 'USD',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  targetCurrency?: string = 'USD';
+}
+
+export class GetMultipleAssetPricesDto {
+  @ApiProperty({
+    description: 'Array of asset symbols to get prices for',
+    example: ['AAPL', 'BTC', 'TSLA'],
+    type: [String],
+  })
+  @IsArray()
+  @ArrayNotEmpty()
+  @IsString({ each: true })
+  @IsNotEmpty({ each: true })
+  symbols: string[];
+
+  @ApiProperty({
+    description: 'Target currency for the prices',
     example: 'USD',
     default: 'USD',
     required: false,

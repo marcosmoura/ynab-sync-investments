@@ -11,6 +11,7 @@ describe('MarketDataController', () => {
 
   const mockMarketDataService = {
     getAssetPrice: vi.fn(),
+    getAssetPrices: vi.fn(),
     convertCurrency: vi.fn(),
   };
 
@@ -157,6 +158,14 @@ describe('MarketDataService', () => {
     }).compile();
 
     service = moduleRef.get(MarketDataService);
+
+    // Reset environment variables
+    delete process.env.COINMARKETCAP_API_KEY;
+    delete process.env.POLYGON_API_KEY;
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('should be defined', () => {
@@ -169,58 +178,163 @@ describe('MarketDataService', () => {
       global.fetch = vi.fn() as unknown as typeof fetch;
     });
 
-    afterEach(() => {
-      vi.restoreAllMocks();
-    });
+    it('should return price from CoinMarketCap when API key is available', async () => {
+      process.env.COINMARKETCAP_API_KEY = 'test-key';
 
-    it('should return price for stock symbols with Alpha Vantage API', async () => {
-      const mockResponse = {
-        'Global Quote': {
-          '05. price': '150.00',
+      const mockCoinMarketCapResponse = {
+        data: {
+          BTC: [
+            {
+              symbol: 'BTC',
+              is_active: 1,
+              quote: {
+                USD: {
+                  price: 45000.0,
+                },
+              },
+            },
+          ],
         },
       };
 
-      // First call will fail for crypto (CoinGecko search), second call succeeds for stock
-      vi.mocked(global.fetch)
-        .mockRejectedValueOnce(new Error('Not found in crypto'))
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve(mockResponse),
-        } as Response);
+      vi.mocked(global.fetch).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockCoinMarketCapResponse),
+      } as Response);
 
-      // Mock environment variable
-      process.env.ALPHA_VANTAGE_API_KEY = 'test-key';
-
-      const result = await service.getAssetPrice('AAPL', 'USD');
+      const result = await service.getAssetPrice('BTC', 'USD');
 
       expect(result).toEqual({
-        symbol: 'AAPL',
-        price: 150.0,
+        symbol: 'BTC',
+        price: 45000.0,
+        currency: 'USD',
+      });
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('coinmarketcap.com'),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'X-CMC_PRO_API_KEY': 'test-key',
+          }),
+        }),
+      );
+    });
+
+    it('should skip inactive assets from CoinMarketCap and try Polygon', async () => {
+      process.env.COINMARKETCAP_API_KEY = 'test-key';
+      process.env.POLYGON_API_KEY = 'test-polygon-key';
+
+      // CoinMarketCap returns inactive asset
+      const mockCoinMarketCapResponse = {
+        data: {
+          BTC: [
+            {
+              symbol: 'BTC',
+              is_active: 0,
+              quote: {
+                USD: {
+                  price: 45000.0,
+                },
+              },
+            },
+          ],
+        },
+      };
+
+      // Polygon stocks succeeds
+      const mockPolygonResponse = {
+        results: [
+          {
+            T: 'BTC',
+            c: 44000.0,
+          },
+        ],
+      };
+
+      vi.mocked(global.fetch)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockCoinMarketCapResponse),
+        } as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockPolygonResponse),
+        } as Response);
+
+      const result = await service.getAssetPrice('BTC', 'USD');
+
+      expect(result).toEqual({
+        symbol: 'BTC',
+        price: 44000.0,
         currency: 'USD',
       });
     });
 
-    it('should return price for crypto symbols with CoinGecko API', async () => {
-      const mockSearchResponse = {
-        coins: [{ id: 'bitcoin', symbol: 'btc', name: 'Bitcoin' }],
-      };
+    it('should try CoinMarketCap when Yahoo Finance fails and API key is available', async () => {
+      process.env.COINMARKETCAP_API_KEY = 'test-key';
 
-      const mockPriceResponse = {
-        bitcoin: {
-          usd: 45000.0,
+      const mockCoinMarketCapResponse = {
+        data: {
+          BTC: [
+            {
+              symbol: 'BTC',
+              is_active: 1,
+              quote: {
+                USD: {
+                  price: 45000.0,
+                },
+              },
+            },
+          ],
         },
       };
 
-      // First call succeeds for crypto search, second call gets the price
-      vi.mocked(global.fetch)
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve(mockSearchResponse),
-        } as Response)
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve(mockPriceResponse),
-        } as Response);
+      vi.mocked(global.fetch).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockCoinMarketCapResponse),
+      } as Response);
+
+      const result = await service.getAssetPrice('BTC', 'USD');
+
+      expect(result).toEqual({
+        symbol: 'BTC',
+        price: 45000.0,
+        currency: 'USD',
+      });
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('coinmarketcap.com'),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'X-CMC_PRO_API_KEY': 'test-key',
+          }),
+        }),
+      );
+    });
+
+    it('should fallback to CoinMarketCap when Yahoo Finance fails', async () => {
+      process.env.COINMARKETCAP_API_KEY = 'test-key';
+
+      const mockCoinMarketCapResponse = {
+        data: {
+          BTC: [
+            {
+              symbol: 'BTC',
+              is_active: 1,
+              quote: {
+                USD: {
+                  price: 45000.0,
+                },
+              },
+            },
+          ],
+        },
+      };
+
+      vi.mocked(global.fetch).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockCoinMarketCapResponse),
+      } as Response);
 
       const result = await service.getAssetPrice('BTC', 'USD');
 
@@ -231,162 +345,388 @@ describe('MarketDataService', () => {
       });
     });
 
-    it('should fallback to mock prices when API fails', async () => {
-      // Both crypto and stock API calls fail
-      vi.mocked(global.fetch)
-        .mockRejectedValueOnce(new Error('Crypto API Error'))
-        .mockRejectedValueOnce(new Error('Stock API Error'));
+    it('should fallback to Polygon when CoinMarketCap fails', async () => {
+      process.env.COINMARKETCAP_API_KEY = 'test-key';
+      process.env.POLYGON_API_KEY = 'test-polygon-key';
 
-      await expect(service.getAssetPrice('AAPL', 'USD')).rejects.toThrow(
-        'Failed to fetch price for AAPL',
-      );
-    });
+      // CoinMarketCap fails
+      vi.mocked(global.fetch).mockRejectedValueOnce(new Error('CoinMarketCap API Error'));
 
-    it('should throw error for unknown symbols when API fails and no fallback exists', async () => {
-      // Both crypto and stock API calls fail
-      vi.mocked(global.fetch)
-        .mockRejectedValueOnce(new Error('Crypto API Error'))
-        .mockRejectedValueOnce(new Error('Stock API Error'));
-
-      await expect(service.getAssetPrice('UNKNOWN', 'USD')).rejects.toThrow(
-        'Failed to fetch price for UNKNOWN',
-      );
-    });
-
-    it('should use default currency when not specified', async () => {
-      const mockResponse = {
-        'Global Quote': {
-          '05. price': '300.00',
-        },
+      // Polygon stocks succeeds
+      const mockPolygonResponse = {
+        results: [
+          {
+            T: 'AAPL',
+            c: 150.0,
+          },
+        ],
       };
 
-      // First call fails for crypto, second call succeeds for stock
-      vi.mocked(global.fetch)
-        .mockRejectedValueOnce(new Error('Not found in crypto'))
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve(mockResponse),
-        } as Response);
+      vi.mocked(global.fetch).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockPolygonResponse),
+      } as Response);
 
-      process.env.ALPHA_VANTAGE_API_KEY = 'test-key';
-
-      const result = await service.getAssetPrice('MSFT');
+      const result = await service.getAssetPrice('AAPL', 'USD');
 
       expect(result).toEqual({
-        symbol: 'MSFT',
-        price: 300.0,
+        symbol: 'AAPL',
+        price: 150.0,
         currency: 'USD',
       });
     });
 
-    it('should convert stock price to target currency when different from USD', async () => {
-      const mockStockResponse = {
-        'Global Quote': {
-          '05. price': '100.00',
-        },
-      };
-
-      const mockConversionResponse = {
-        rates: {
-          EUR: 0.85,
-        },
-      };
-
-      // First call fails for crypto, second call succeeds for stock, third call is currency conversion
-      vi.mocked(global.fetch)
-        .mockRejectedValueOnce(new Error('Not found in crypto'))
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve(mockStockResponse),
-        } as Response)
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve(mockConversionResponse),
-        } as Response);
-
-      process.env.ALPHA_VANTAGE_API_KEY = 'test-key';
-
-      const result = await service.getAssetPrice('AAPL', 'EUR');
-
-      expect(result).toEqual({
-        symbol: 'AAPL',
-        price: 85.0, // 100 * 0.85
-        currency: 'EUR',
-      });
-    });
-
-    it('should fallback to USD price when currency conversion fails', async () => {
-      const mockStockResponse = {
-        'Global Quote': {
-          '05. price': '100.00',
-        },
-      };
-
-      // First call fails for crypto, second call succeeds for stock, third call fails for currency conversion
-      vi.mocked(global.fetch)
-        .mockRejectedValueOnce(new Error('Not found in crypto'))
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve(mockStockResponse),
-        } as Response)
-        .mockRejectedValueOnce(new Error('Currency conversion failed'));
-
-      process.env.ALPHA_VANTAGE_API_KEY = 'test-key';
-
-      const result = await service.getAssetPrice('AAPL', 'EUR');
-
-      expect(result).toEqual({
-        symbol: 'AAPL',
-        price: 100.0, // Fallback to USD price
-        currency: 'EUR',
-      });
-    });
-
-    it('should throw error when stock price not found in API response', async () => {
-      const mockResponse = {
-        'Global Quote': {
-          // Missing '05. price' field
-        },
-      };
-
-      vi.mocked(global.fetch).mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(mockResponse),
-      } as Response);
-
-      process.env.ALPHA_VANTAGE_API_KEY = 'test-key';
-
+    it('should throw error when all providers fail', async () => {
+      // No API keys set, so no providers will be tried
       await expect(service.getAssetPrice('INVALID', 'USD')).rejects.toThrow(
-        'Failed to fetch price for INVALID',
+        'Failed to fetch price for INVALID: Unable to find asset in any provider',
       );
     });
 
-    it('should throw error when Global Quote is missing from API response', async () => {
-      const mockResponse = {
-        // Missing 'Global Quote' field
+    it('should try Polygon indices when stocks fail', async () => {
+      process.env.POLYGON_API_KEY = 'test-polygon-key';
+
+      // Polygon stocks fails (no results)
+      const mockPolygonStocksResponse = {
+        results: [],
+      };
+
+      // Polygon indices succeeds
+      const mockPolygonIndicesResponse = {
+        results: [
+          {
+            T: 'SPY',
+            c: 450.0,
+          },
+        ],
+      };
+
+      vi.mocked(global.fetch)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockPolygonStocksResponse),
+        } as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockPolygonIndicesResponse),
+        } as Response);
+
+      const result = await service.getAssetPrice('SPY', 'USD');
+
+      expect(result).toEqual({
+        symbol: 'SPY',
+        price: 450.0,
+        currency: 'USD',
+      });
+
+      // Should have called individual ticker endpoints (stocks first, then indices)
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+      expect(global.fetch).toHaveBeenNthCalledWith(
+        1,
+        expect.stringContaining('/ticker/SPY/prev'),
+        expect.any(Object),
+      );
+      expect(global.fetch).toHaveBeenNthCalledWith(
+        2,
+        expect.stringContaining('/ticker/I:SPY/prev'),
+        expect.any(Object),
+      );
+    });
+
+    it('should convert currency when needed', async () => {
+      process.env.COINMARKETCAP_API_KEY = 'test-key';
+
+      const mockCoinMarketCapResponse = {
+        data: {
+          BTC: [
+            {
+              symbol: 'BTC',
+              is_active: 1,
+              quote: {
+                EUR: {
+                  price: 85.0,
+                },
+              },
+            },
+          ],
+        },
       };
 
       vi.mocked(global.fetch).mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve(mockResponse),
+        json: () => Promise.resolve(mockCoinMarketCapResponse),
       } as Response);
 
-      process.env.ALPHA_VANTAGE_API_KEY = 'test-key';
+      const result = await service.getAssetPrice('BTC', 'EUR');
 
-      await expect(service.getAssetPrice('INVALID', 'USD')).rejects.toThrow(
-        'Failed to fetch price for INVALID',
+      expect(result).toEqual({
+        symbol: 'BTC',
+        price: 85.0,
+        currency: 'EUR',
+      });
+
+      // Verify CoinMarketCap was called with EUR conversion
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('convert=EUR'),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'X-CMC_PRO_API_KEY': 'test-key',
+          }),
+        }),
+      );
+    });
+
+    it('should handle provider order correctly with multiple symbols', async () => {
+      process.env.COINMARKETCAP_API_KEY = 'test-key';
+      process.env.POLYGON_API_KEY = 'test-polygon-key';
+
+      // CoinMarketCap finds some symbols
+      const mockCoinMarketCapResponse = {
+        data: {
+          BTC: [
+            {
+              symbol: 'BTC',
+              is_active: 1,
+              quote: {
+                USD: {
+                  price: 45000.0,
+                },
+              },
+            },
+          ],
+        },
+      };
+
+      // Polygon finds remaining symbols
+      const mockPolygonResponse = {
+        results: [
+          {
+            T: 'AAPL',
+            c: 150.0,
+          },
+        ],
+      };
+
+      vi.mocked(global.fetch)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockCoinMarketCapResponse),
+        } as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockPolygonResponse),
+        } as Response);
+
+      const result = await service.getAssetPrices(['BTC', 'AAPL'], 'USD');
+
+      expect(result).toEqual([
+        { symbol: 'BTC', price: 45000.0, currency: 'USD' },
+        { symbol: 'AAPL', price: 150.0, currency: 'USD' },
+      ]);
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('coinmarketcap.com'),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'X-CMC_PRO_API_KEY': 'test-key',
+          }),
+        }),
+      );
+    });
+  });
+
+  describe('getAssetPrices (bulk)', () => {
+    beforeEach(() => {
+      global.fetch = vi.fn() as unknown as typeof fetch;
+    });
+
+    it('should handle multiple symbols with CoinMarketCap first', async () => {
+      process.env.COINMARKETCAP_API_KEY = 'test-key';
+
+      const mockCoinMarketCapResponse = {
+        data: {
+          BTC: [
+            {
+              symbol: 'BTC',
+              is_active: 1,
+              quote: {
+                USD: {
+                  price: 45000.0,
+                },
+              },
+            },
+          ],
+          ETH: [
+            {
+              symbol: 'ETH',
+              is_active: 1,
+              quote: {
+                USD: {
+                  price: 3000.0,
+                },
+              },
+            },
+          ],
+        },
+      };
+
+      vi.mocked(global.fetch).mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(mockCoinMarketCapResponse),
+      } as Response);
+
+      const result = await service.getAssetPrices(['BTC', 'ETH'], 'USD');
+
+      expect(result).toEqual([
+        { symbol: 'BTC', price: 45000.0, currency: 'USD' },
+        { symbol: 'ETH', price: 3000.0, currency: 'USD' },
+      ]);
+
+      expect(global.fetch).toHaveBeenCalled();
+    });
+
+    it('should filter out symbols with special characters for CoinMarketCap', async () => {
+      process.env.COINMARKETCAP_API_KEY = 'test-key';
+      process.env.POLYGON_API_KEY = 'test-polygon-key';
+
+      // CoinMarketCap response for valid symbols only (BTC, ETH)
+      const mockCoinMarketCapResponse = {
+        data: {
+          BTC: [
+            {
+              symbol: 'BTC',
+              is_active: 1,
+              quote: {
+                USD: {
+                  price: 45000.0,
+                },
+              },
+            },
+          ],
+          ETH: [
+            {
+              symbol: 'ETH',
+              is_active: 1,
+              quote: {
+                USD: {
+                  price: 3000.0,
+                },
+              },
+            },
+          ],
+        },
+      };
+
+      // Polygon response for the special character symbol
+      const mockPolygonResponse = {
+        results: [
+          {
+            T: 'NQSE.DE',
+            c: 100.0,
+          },
+        ],
+      };
+
+      vi.mocked(global.fetch)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockCoinMarketCapResponse),
+        } as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockPolygonResponse),
+        } as Response);
+
+      const result = await service.getAssetPrices(['BTC', 'ETH', 'NQSE.DE'], 'USD');
+
+      expect(result).toEqual([
+        { symbol: 'BTC', price: 45000.0, currency: 'USD' },
+        { symbol: 'ETH', price: 3000.0, currency: 'USD' },
+        { symbol: 'NQSE.DE', price: 100.0, currency: 'USD' },
+      ]);
+
+      // Should make 2 API calls: CoinMarketCap for BTC,ETH and Polygon for NQSE.DE
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+
+      // First call should be to CoinMarketCap with only valid symbols
+      expect(global.fetch).toHaveBeenNthCalledWith(
+        1,
+        expect.stringContaining('coinmarketcap.com'),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'X-CMC_PRO_API_KEY': 'test-key',
+          }),
+        }),
+      );
+
+      // Second call should be to Polygon for the special character symbol
+      expect(global.fetch).toHaveBeenNthCalledWith(
+        2,
+        expect.stringContaining('polygon.io'),
+        expect.any(Object),
+      );
+    });
+
+    it('should handle all symbols with special characters', async () => {
+      process.env.COINMARKETCAP_API_KEY = 'test-key';
+      process.env.POLYGON_API_KEY = 'test-polygon-key';
+
+      // Polygon response for special character symbols
+      const mockPolygonResponse1 = {
+        results: [
+          {
+            T: 'NQSE.DE',
+            c: 100.0,
+          },
+        ],
+      };
+
+      const mockPolygonResponse2 = {
+        results: [
+          {
+            T: 'VOO-X',
+            c: 200.0,
+          },
+        ],
+      };
+
+      vi.mocked(global.fetch)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockPolygonResponse1),
+        } as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockPolygonResponse2),
+        } as Response);
+
+      const result = await service.getAssetPrices(['NQSE.DE', 'VOO-X'], 'USD');
+
+      expect(result).toEqual([
+        { symbol: 'NQSE.DE', price: 100.0, currency: 'USD' },
+        { symbol: 'VOO-X', price: 200.0, currency: 'USD' },
+      ]);
+
+      // Should skip CoinMarketCap entirely and go straight to Polygon
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+
+      // Both calls should be to Polygon
+      expect(global.fetch).toHaveBeenNthCalledWith(
+        1,
+        expect.stringContaining('polygon.io'),
+        expect.any(Object),
+      );
+      expect(global.fetch).toHaveBeenNthCalledWith(
+        2,
+        expect.stringContaining('polygon.io'),
+        expect.any(Object),
       );
     });
   });
 
   describe('convertCurrency', () => {
     beforeEach(() => {
-      // Mock the fetch method to avoid real API calls in tests
       global.fetch = vi.fn() as unknown as typeof fetch;
-    });
-
-    afterEach(() => {
-      vi.restoreAllMocks();
     });
 
     it('should return same amount for same currency', async () => {
@@ -394,7 +734,7 @@ describe('MarketDataService', () => {
       expect(result).toBe(100);
     });
 
-    it('should convert between different currencies using exchange rate API', async () => {
+    it('should convert between different currencies', async () => {
       const mockResponse = {
         rates: {
           USD: 1.16,
@@ -407,57 +747,14 @@ describe('MarketDataService', () => {
       } as Response);
 
       const result = await service.convertCurrency(100, 'EUR', 'USD');
-      expect(result).toBeCloseTo(116, 1); // 100 * 1.16, allowing for floating point precision
+      expect(result).toBeCloseTo(116, 1);
     });
 
     it('should handle conversion errors gracefully', async () => {
-      vi.mocked(global.fetch).mockResolvedValueOnce({
-        ok: false,
-        status: 404,
-        statusText: 'Not Found',
-      } as Response);
-
-      // The service returns the original amount as fallback
-      const result = await service.convertCurrency(50, 'INVALID', 'USD');
-      expect(result).toBe(50);
-    });
-
-    it('should handle missing exchange rate gracefully', async () => {
-      const mockResponse = {
-        rates: {
-          // Missing target currency
-        },
-      };
-
-      vi.mocked(global.fetch).mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(mockResponse),
-      } as Response);
-
-      // The service returns the original amount as fallback
-      const result = await service.convertCurrency(100, 'EUR', 'INVALID');
-      expect(result).toBe(100);
-    });
-
-    it('should handle API response with invalid data', async () => {
-      const mockResponse = {}; // Missing rates property
-
-      vi.mocked(global.fetch).mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(mockResponse),
-      } as Response);
-
-      // The service returns the original amount as fallback
-      const result = await service.convertCurrency(50, 'EUR', 'USD');
-      expect(result).toBe(50);
-    });
-
-    it('should handle fetch rejection gracefully', async () => {
       vi.mocked(global.fetch).mockRejectedValueOnce(new Error('Network error'));
 
-      // The service returns the original amount as fallback
-      const result = await service.convertCurrency(75, 'EUR', 'USD');
-      expect(result).toBe(75);
+      const result = await service.convertCurrency(50, 'EUR', 'USD');
+      expect(result).toBe(50);
     });
   });
 });

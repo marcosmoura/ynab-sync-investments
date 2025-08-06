@@ -19,8 +19,6 @@ async function main(): Promise<void> {
   const envPath = join(__dirname, '../../../.env');
   const envExists = fs.existsSync(envPath);
 
-  console.log(envPath);
-
   console.log(`📁 Environment file: ${envExists ? '✅ Found' : '❌ Missing'}`);
 
   if (envExists) {

@@ -1,13 +1,11 @@
 import { ApiClient } from './api-client';
 import { DatabaseManager } from './database-manager';
 import { TestData } from './test-data';
-import { YnabValidator } from './ynab-validator';
 
 export class ApiPlayground {
   private apiClient: ApiClient;
   private testData: TestData;
   private dbManager: DatabaseManager;
-  private ynabValidator: YnabValidator;
   private readonly apiBaseUrl: string;
 
   constructor() {
@@ -15,7 +13,6 @@ export class ApiPlayground {
     this.apiClient = new ApiClient(this.apiBaseUrl);
     this.testData = new TestData();
     this.dbManager = new DatabaseManager();
-    this.ynabValidator = new YnabValidator();
   }
 
   async run(): Promise<void> {
