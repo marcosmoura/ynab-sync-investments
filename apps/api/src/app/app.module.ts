@@ -1,4 +1,4 @@
-import { INestApplication, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 
@@ -24,10 +24,4 @@ import { AppService } from './app.service';
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {
-  public app: INestApplication;
-
-  public setApp(app: INestApplication) {
-    this.app = app;
-  }
-}
+export class AppModule {}

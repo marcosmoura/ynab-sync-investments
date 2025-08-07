@@ -1,33 +1,3 @@
-export interface CreateAssetDto {
-  symbol: string;
-  amount: number;
-  ynabAccountId: string;
-}
-
-export interface AssetResponseDto {
-  id: string;
-  symbol: string;
-  amount: number;
-  ynabAccountId: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface CreateUserSettingsDto {
-  ynabApiToken: string;
-  syncSchedule: string;
-  targetBudgetId?: string;
-}
-
-export interface UserSettingsResponseDto {
-  id: string;
-  ynabApiToken: string;
-  syncSchedule: string;
-  targetBudgetId: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
 export interface YnabAccountDto {
   id: string;
   name: string;
