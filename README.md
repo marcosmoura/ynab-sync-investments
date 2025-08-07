@@ -270,16 +270,6 @@ pnpm nx build api --prod
 
 ### Production Deployment
 
-#### Docker Deployment
-
-```bash
-# Build production image
-docker build -t ynab-investments-sync .
-
-# Run with environment file
-docker run --env-file .env.production -p 3000:3000 ynab-investments-sync
-```
-
 #### Node.js Deployment
 
 ```bash
@@ -290,7 +280,7 @@ pnpm nx build api --prod
 pnpm install --prod --frozen-lockfile
 
 # Start the application
-NODE_ENV=production node dist/apps/api/main.js
+NODE_ENV=production node dist/apps/api/main.cjs
 ```
 
 #### Process Management
