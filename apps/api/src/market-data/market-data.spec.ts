@@ -1,0 +1,174 @@
+import { Test } from '@nestjs/testing';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+import { MarketDataService } from './market-data.service';
+import { AlphaVantageService } from './providers/alpha-vantage/alpha-vantage.service';
+import { CoinMarketCapService } from './providers/coinmarketcap/coinmarketcap.service';
+import { FinnhubService } from './providers/finnhub/finnhub.service';
+import { PolygonService } from './providers/polygon/polygon.service';
+import { AssetResult } from './providers/types';
+
+describe('MarketDataService', () => {
+  let service: MarketDataService;
+  let coinMarketCapService: CoinMarketCapService;
+  let finnhubService: FinnhubService;
+  let polygonService: PolygonService;
+
+  const mockAssetResult: AssetResult = {
+    symbol: 'AAPL',
+    price: 150.0,
+    currency: 'USD',
+  };
+
+  beforeEach(async () => {
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        MarketDataService,
+        {
+          provide: CoinMarketCapService,
+          useValue: {
+            getProviderName: vi.fn().mockReturnValue('CoinMarketCap'),
+            isAvailable: vi.fn().mockReturnValue(true),
+            fetchAssetPrices: vi.fn(),
+          },
+        },
+        {
+          provide: FinnhubService,
+          useValue: {
+            getProviderName: vi.fn().mockReturnValue('Finnhub'),
+            isAvailable: vi.fn().mockReturnValue(true),
+            fetchAssetPrices: vi.fn(),
+          },
+        },
+        {
+          provide: PolygonService,
+          useValue: {
+            getProviderName: vi.fn().mockReturnValue('Polygon'),
+            isAvailable: vi.fn().mockReturnValue(true),
+            fetchAssetPrices: vi.fn(),
+          },
+        },
+        {
+          provide: AlphaVantageService,
+          useValue: {
+            getProviderName: vi.fn().mockReturnValue('Alpha Vantage'),
+            isAvailable: vi.fn().mockReturnValue(false),
+            fetchAssetPrices: vi.fn(),
+          },
+        },
+      ],
+    }).compile();
+
+    service = moduleRef.get(MarketDataService);
+    coinMarketCapService = moduleRef.get(CoinMarketCapService);
+    finnhubService = moduleRef.get(FinnhubService);
+    polygonService = moduleRef.get(PolygonService);
+  });
+
+  it('should be defined', () => {
+    expect(service).toBeDefined();
+  });
+
+  describe('constructor', () => {
+    it('should initialize with available providers only', () => {
+      const availableProviders = service.getAvailableProviders();
+      expect(availableProviders.length).toBeGreaterThan(0);
+      expect(availableProviders).toContain('CoinMarketCap');
+      expect(availableProviders).toContain('Finnhub');
+      expect(availableProviders).toContain('Polygon');
+      expect(availableProviders).not.toContain('Alpha Vantage');
+    });
+  });
+
+  describe('getAssetPrices', () => {
+    it('should return empty array when no symbols provided', async () => {
+      const result = await service.getAssetPrices([]);
+      expect(result).toEqual([]);
+    });
+
+    it('should fetch prices from first available provider when all symbols found', async () => {
+      const symbols = ['AAPL', 'GOOGL'];
+      const mockResults = [
+        { ...mockAssetResult, symbol: 'AAPL' },
+        { ...mockAssetResult, symbol: 'GOOGL', price: 2500.0 },
+      ];
+
+      // First provider finds all symbols, so no subsequent calls
+      vi.mocked(coinMarketCapService.fetchAssetPrices).mockResolvedValue(mockResults);
+
+      const result = await service.getAssetPrices(symbols);
+
+      expect(result).toEqual(mockResults);
+      expect(coinMarketCapService.fetchAssetPrices).toHaveBeenCalled();
+      expect(finnhubService.fetchAssetPrices).not.toHaveBeenCalled();
+    });
+
+    it('should try next provider if first one fails', async () => {
+      const symbols = ['AAPL'];
+      const mockResult = [{ ...mockAssetResult, symbol: 'AAPL' }];
+
+      vi.mocked(coinMarketCapService.fetchAssetPrices).mockRejectedValue(
+        new Error('Provider error'),
+      );
+      vi.mocked(finnhubService.fetchAssetPrices).mockResolvedValue(mockResult);
+
+      const result = await service.getAssetPrices(symbols);
+
+      expect(coinMarketCapService.fetchAssetPrices).toHaveBeenCalled();
+      expect(finnhubService.fetchAssetPrices).toHaveBeenCalled();
+      expect(result).toEqual(mockResult);
+    });
+
+    it('should handle custom target currency', async () => {
+      const symbols = ['AAPL'];
+      const targetCurrency = 'EUR';
+      const mockResult = [{ ...mockAssetResult, symbol: 'AAPL', currency: 'EUR' }];
+
+      vi.mocked(coinMarketCapService.fetchAssetPrices).mockResolvedValue(mockResult);
+
+      const result = await service.getAssetPrices(symbols, targetCurrency);
+
+      expect(coinMarketCapService.fetchAssetPrices).toHaveBeenCalled();
+      expect(result).toEqual(mockResult);
+    });
+
+    it('should remove found symbols from remaining list across providers', async () => {
+      const symbols = ['AAPL', 'GOOGL', 'UNKNOWN'];
+      const firstProviderResults = [{ ...mockAssetResult, symbol: 'AAPL' }];
+      const secondProviderResults = [{ ...mockAssetResult, symbol: 'GOOGL', price: 2500.0 }];
+
+      // First provider finds only AAPL
+      vi.mocked(coinMarketCapService.fetchAssetPrices).mockResolvedValue(firstProviderResults);
+      // Second provider finds only GOOGL from remaining symbols
+      vi.mocked(finnhubService.fetchAssetPrices).mockResolvedValue(secondProviderResults);
+      // Third provider gets called with only UNKNOWN but finds nothing
+      vi.mocked(polygonService.fetchAssetPrices).mockResolvedValue([]);
+
+      const result = await service.getAssetPrices(symbols);
+
+      expect(coinMarketCapService.fetchAssetPrices).toHaveBeenCalled();
+      expect(finnhubService.fetchAssetPrices).toHaveBeenCalled();
+      expect(polygonService.fetchAssetPrices).toHaveBeenCalled();
+      expect(result).toHaveLength(2);
+      expect(result).toEqual([...firstProviderResults, ...secondProviderResults]);
+    });
+
+    it('should handle case-insensitive symbol matching', async () => {
+      const symbols = ['aapl'];
+      const mockResult = [{ ...mockAssetResult, symbol: 'AAPL' }];
+
+      vi.mocked(coinMarketCapService.fetchAssetPrices).mockResolvedValue(mockResult);
+
+      const result = await service.getAssetPrices(symbols);
+
+      expect(result).toEqual(mockResult);
+    });
+  });
+
+  describe('getAvailableProviders', () => {
+    it('should return list of available provider names', () => {
+      const providers = service.getAvailableProviders();
+      expect(providers).toEqual(['CoinMarketCap', 'Finnhub', 'Polygon']);
+    });
+  });
+});

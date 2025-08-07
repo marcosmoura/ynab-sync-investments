@@ -1,168 +1,216 @@
 # YNAB Investments Sync API
 
-NestJS backend API for synchronizing investment portfolios with YNAB accounts.
+NestJS backend API for synchronizing investment portfolios with YNAB accounts using real-time market data.
 
 ## Features
 
-- **Asset Management**: Add, edit, and delete investment assets
-- **YNAB Integration**: Fetch YNAB accounts and update balances
-- **Scheduled Sync**: Automatically sync portfolio values on configurable schedules
-- **File-based Sync**: Process YAML configuration files with investment data
-- **Market Data**: Fetch real-time asset prices (extensible for multiple providers)
-- **User Settings**: Configure YNAB API token and sync schedule
+- **Real-Time Market Data**: Fetches current asset prices from multiple providers (Alpha Vantage, Polygon, Finnhub, CoinMarketCap)
+- **YNAB Integration**: Direct integration with YNAB API for budget and account management
+- **File-Based Configuration**: Processes external YAML configuration files with investment holdings
+- **Scheduled Sync**: Automatic portfolio syncing with configurable schedules (daily/weekly/monthly)
+- **Currency Conversion**: Automatic conversion to budget currency
+- **Multi-Asset Support**: Stocks, crypto, ETFs, bonds, and other investment instruments
+- **Memory-Only Storage**: No database required - all data cached in memory
 
 ## API Endpoints
 
-### Assets
+### Core Endpoints
 
-- `GET /api/assets` - List all assets (optional query: `?ynabAccountId=<id>`)
-- `POST /api/assets` - Create a new asset
-- `GET /api/assets/:id` - Get asset by ID
-- `PATCH /api/assets/:id` - Update asset
-- `DELETE /api/assets/:id` - Delete asset
+- **`GET /api`**: Get application information and health status
+- **`GET /api/trigger`**: Manually trigger configuration fetch and YNAB sync
 
-### User Settings
+### Response Examples
 
-- `GET /api/settings` - Get current user settings
-- `POST /api/settings` - Create/overwrite user settings
-- `PATCH /api/settings` - Update user settings
+#### Application Information (`GET /api`)
 
-### YNAB Integration
+```json
+{
+  "message": "YNAB Investments Sync API",
+  "version": "1.0.0",
+  "status": "running",
+  "documentation": "/api/docs"
+}
+```
 
-- `POST /api/ynab/accounts` - Get YNAB accounts (requires token in body)
-- `POST /api/ynab/sync` - Trigger manual sync
+#### Manual Sync Trigger (`GET /api/trigger`)
 
-### File Sync
-
-- `POST /api/file-sync/trigger` - Trigger manual file sync (processes YAML config file)
+```json
+{
+  "message": "File sync completed successfully"
+}
+```
 
 ## Environment Variables
 
-Create a `.env` file based on `.env.example`:
+Create a `.env` file in the project root:
 
 ```bash
-# Database Configuration
-DB_HOST=localhost
-DB_PORT=5432
-DB_USERNAME=postgres
-DB_PASSWORD=password
-DB_NAME=ynab_investments
+# YNAB Configuration (Required)
+YNAB_API_KEY=your_ynab_personal_access_token
 
-# Application Configuration
+# Investment Config File URL (Required)
+INVESTMENTS_CONFIG_FILE_URL=https://example.com/path/to/your/investments.yaml
+
+# Market Data Provider API Keys (At least one required)
+ALPHA_VANTAGE_API_KEY=your_alpha_vantage_key
+POLYGON_API_KEY=your_polygon_key
+FINNHUB_API_KEY=your_finnhub_key
+COINMARKETCAP_API_KEY=your_coinmarketcap_key
+
+# Optional Configuration
 NODE_ENV=development
 PORT=3000
-FRONTEND_URL=http://localhost:4200
-
-# File Sync Configuration (optional)
-INVESTMENTS_CONFIG_FILE_URL=https://example.com/investment-config.yaml
 ```
+
+### Getting API Keys
+
+- **YNAB**: [Get Personal Access Token](https://app.youneedabudget.com/settings/developer)
+- **Alpha Vantage**: [Free API Key](https://www.alphavantage.co/support/#api-key)
+- **Polygon.io**: [API Key](https://polygon.io/)
+- **Finnhub**: [Free API Key](https://finnhub.io/)
+- **CoinMarketCap**: [API Key](https://coinmarketcap.com/api/)
 
 ## Development Setup
 
-1. **Start the database**:
+### Prerequisites
 
-   ```bash
-   docker-compose up -d postgres
-   ```
+- Node.js 18+ and pnpm
+- YNAB Personal Access Token
+- At least one market data provider API key
 
-2. **Install dependencies** (from workspace root):
-
-   ```bash
-   pnpm install
-   ```
-
-3. **Start the development server**:
-
-   ```bash
-   pnpm nx serve api
-   ```
-
-4. **Access the API**: `http://localhost:3000/api`
-
-## Database Management
-
-- **Adminer**: Access at `http://localhost:8080` when running docker-compose
-- **Database**: The application uses TypeORM with automatic synchronization in development
-
-## Sync Schedules
-
-- **Daily**: Every day
-- **Every Two Days**: Every other day
-- **Weekly**: Every Monday
-- **Every Two Weeks**: Every other Monday
-- **Monthly (First)**: First day of each month
-- **Monthly (Last)**: Last day of each month
-
-## File-based Sync
-
-The application supports reading investment data from a remote YAML configuration file. This is useful for automated setups or when you want to manage your investments through configuration files hosted remotely.
-
-### Configuration File Format
-
-Create a YAML file with the following structure and host it at a publicly accessible URL:
-
-```yaml
-# Your YNAB Budget ID
-budget: 'your-budget-id'
-
-# List of investment accounts
-accounts:
-  - account_id: 'ynab-account-id-1'
-    holdings:
-      AAPL: 10 # Apple - 10 shares
-      MSFT: 5 # Microsoft - 5 shares
-
-  - account_id: 'ynab-account-id-2'
-    holdings:
-      BTC: 1.5 # Bitcoin - 1.5 BTC
-      ETH: 10 # Ethereum - 10 ETH
-```
-
-### Environment Configuration
-
-Set the `INVESTMENTS_CONFIG_FILE_URL` environment variable to point to your YAML file URL:
+### Installation and Running
 
 ```bash
-INVESTMENTS_CONFIG_FILE_URL=https://example.com/investment-config.yaml
+# Install dependencies (from project root)
+pnpm install
+
+# Start development server
+pnpm nx serve api
+
+# Start with file watching
+pnpm nx serve api --watch
+
+# Build for production
+pnpm nx build api
 ```
 
-### Scheduled Processing
-
-The file sync runs daily at 9 AM and follows the same schedule settings as regular sync. If no user settings exist, it defaults to daily processing.
-
-### Manual Triggering
-
-You can manually trigger file processing via the API:
-
-````bash
-curl -X POST http://localhost:3000/api/file-sync/trigger
-```### How it Works
-
-1. Fetches the YAML configuration file from the remote URL
-2. For each account in the file:
-   - Removes all existing assets for that YNAB account
-   - Creates new assets based on the holdings in the file
-3. Triggers a sync to YNAB to update account balances
-
-## Market Data Integration
-
-The app is designed to be extensible for different market data providers:
-
-- **Stocks**: Can integrate with Alpha Vantage, Yahoo Finance, etc.
-- **Crypto**: Can integrate with CoinGecko, CoinMarketCap, etc.
-- **Forex**: Can integrate with Fixer.io, OpenExchangeRates, etc.
-
-Currently uses mock data for development. Update the `MarketDataService` for production use.
-
-## Testing
+### Testing
 
 ```bash
-# Unit tests
+# Run all tests
 pnpm nx test api
 
-# E2E tests
-pnpm nx e2e api
-
-# Test coverage
+# Run tests with coverage
 pnpm nx test api --coverage
-````
+
+# Run specific test files
+pnpm nx test api --testPathPattern="market-data"
+```
+
+### API Testing
+
+Use the included playground application:
+
+```bash
+# Run comprehensive API tests
+pnpm nx run api-playground:run-playground
+
+# Check configuration setup
+pnpm nx run api-playground:check-setup
+```
+
+## Architecture
+
+### Service Structure
+
+- **AppService**: Core application logic and sync orchestration
+- **MarketDataService**: Coordinates multiple market data providers
+- **FileSyncService**: Handles configuration file fetching and caching
+- **YnabService**: YNAB API integration for budgets and accounts
+
+### Market Data Providers
+
+The API uses a provider pattern for market data:
+
+- **Alpha Vantage**: Stocks, forex, cryptocurrencies
+- **Polygon.io**: US stocks and market indices
+- **Finnhub**: Global stocks and forex
+- **CoinMarketCap**: Cryptocurrency prices
+
+Providers are tried in order until all required asset prices are found.
+
+### Sync Process
+
+1. **Configuration Fetch**: Downloads latest investment config from remote URL
+2. **Asset Price Retrieval**: Fetches current prices from available providers
+3. **Portfolio Calculation**: Calculates total values for each account
+4. **Currency Conversion**: Converts to budget currency if needed
+5. **YNAB Update**: Updates account balances via YNAB API
+
+## Configuration
+
+### Investment Config File Format
+
+```yaml
+budget: your_ynab_budget_id
+
+# Optional: Custom sync schedule
+schedule:
+  sync_time: '9pm' # Time to sync investments
+  sync_frequency: 'weekly' # How often to sync (daily, weekly, monthly)
+
+accounts:
+  - account_id: your_ynab_account_id_1
+    holdings:
+      AAPL: 10.5 # 10.5 shares of Apple
+      BTC: 0.25 # 0.25 Bitcoin
+      GOOGL: 5.0 # 5 shares of Google
+
+  - account_id: your_ynab_account_id_2
+    holdings:
+      ETH: 2.0 # 2 Ethereum
+      TSLA: 15.0 # 15 shares of Tesla
+      VTI: 100.0 # 100 shares of Vanguard Total Stock Market ETF
+```
+
+### Schedule Configuration
+
+- **sync_time**: Time of day to perform sync (e.g., "9pm", "21:00", "09:30")
+- **sync_frequency**: How often to sync
+  - `daily`: Every day at specified time
+  - `weekly`: Once per week at specified time
+  - `monthly`: Once per month at specified time
+
+## Deployment
+
+### Docker
+
+```bash
+# Build image
+docker build -t ynab-investments-sync-api .
+
+# Run container
+docker run -p 3000:3000 --env-file .env ynab-investments-sync-api
+```
+
+### Production
+
+```bash
+# Build for production
+pnpm nx build api --prod
+
+# Start production server
+NODE_ENV=production node dist/apps/api/main.js
+```
+
+## Monitoring and Logs
+
+The API provides structured logging for:
+
+- Configuration fetch operations
+- Market data provider requests
+- YNAB API interactions
+- Sync job execution
+- Error tracking and debugging
+
+Monitor logs for sync status and troubleshooting.

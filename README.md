@@ -67,7 +67,6 @@ This is an Nx monorepo containing:
 
 5. **Access the application**:
    - API: <http://localhost:3000/api>
-   - Swagger Documentation: <http://localhost:3000/api/docs>
 
 ## 📋 Prerequisites
 
@@ -94,6 +93,8 @@ POLYGON_API_KEY=your_api_key
 FINNHUB_API_KEY=your_api_key
 COINMARKETCAP_API_KEY=your_api_key
 ```
+
+At least one provider should be configured, otherwise no sync can happen.
 
 ### Investment Config File
 
@@ -122,135 +123,208 @@ accounts:
 
 ## 📱 API Endpoints
 
-### File Sync
+The API provides the following endpoints:
 
-- `POST /api/file-sync/trigger` - Trigger manual file sync and YNAB update
+### Core Endpoints
 
-### YNAB Integration
-
-- `POST /api/ynab/budgets` - Fetch YNAB budgets
-- `POST /api/ynab/accounts` - Fetch YNAB accounts
-
-### Market Data
-
-- `POST /api/market-data/bulk-price` - Get current asset prices
+- **`GET /api`**: Application information and health status
+- **`GET /api/trigger`**: Manually trigger a file sync and YNAB update
 
 ## 🔄 How It Works
 
-1. **Daily Config Fetch** (9 PM UTC): Fetches your investment config file
-2. **Change Detection**: Compares with cached version to detect changes
-3. **Auto-Sync Trigger**: If config changed or it's the first fetch, triggers YNAB sync
-4. **Market Data**: Fetches real-time prices for all assets in your holdings
-5. **Portfolio Calculation**: Calculates total value per account (quantity × current price)
-6. **YNAB Update**: Updates account balances in YNAB via reconciliation transactions
-7. **Scheduled Sync**: Runs additional syncs based on config schedule (default: weekly)
+1. **Configuration Fetching**: The app fetches your investment configuration from a remote YAML file
+2. **Market Data Retrieval**: Asset prices are fetched from configured market data providers (Alpha Vantage, Polygon, Finnhub, CoinMarketCap)
+3. **Portfolio Calculation**: Total portfolio values are calculated based on holdings and current prices
+4. **Currency Conversion**: Asset values are converted to your YNAB budget currency if needed
+5. **YNAB Sync**: Account balances are updated in YNAB via the API
+
+### Market Data Providers
+
+The app supports multiple providers for redundancy and better coverage:
+
+- **Alpha Vantage**: Stocks, forex, crypto
+- **Polygon.io**: Stocks, indices
+- **Finnhub**: Stocks, forex
+- **CoinMarketCap**: Cryptocurrencies
+
+At least one provider must be configured. The app will try providers in order until it finds the data it needs.
 
 ### Sync Schedule Options
 
-- **Default**: Weekly on Sunday at 9 PM UTC
-- **Custom**: Define your own cron expression in the config file
-- **Constraints**: Maximum once per day, minimum once per month
-- **Manual**: Trigger anytime via API endpoint
+Configure automatic syncing in your investment config file:
+
+```yaml
+schedule:
+  sync_time: '9pm' # Time to sync (9pm, 21:00, etc.)
+  sync_frequency: 'weekly' # How often to sync (daily, weekly, monthly)
+```
+
+**Frequency Options**:
+
+- `daily`: Sync every day at the specified time
+- `weekly`: Sync once per week at the specified time
+- `monthly`: Sync once per month at the specified time
 
 ## 🧪 Development
 
-### Running Tests
+### Running the Application
 
 ```bash
-# Unit tests
-pnpm nx test api
+# Install dependencies
+pnpm install
 
-# Unit tests with coverage
-pnpm nx test api --coverage
+# Start API in development mode
+pnpm nx serve api
+
+# Start API in watch mode
+pnpm nx serve api --watch
 ```
 
 ### API Playground
 
-The project includes a comprehensive testing application that validates the new file-sync functionality:
+Test the API functionality with the included playground:
 
 ```bash
-# Configure YNAB credentials and config file URL in .env
-# Then run the playground
+# Run the API playground
 pnpm nx run api-playground:run-playground
+
+# Check setup and configuration
+pnpm nx run api-playground:check-setup
 ```
 
-The playground tests:
+The playground simulates real-world usage and validates the entire sync process.
 
-- API health checks
-- YNAB API integration and budget access
-- File sync process (fetch config, parse, sync to YNAB)
-- Market data provider integration
-- End-to-end portfolio value calculation
+### Testing
+
+```bash
+# Run all tests
+pnpm nx test api
+
+# Run tests with coverage
+pnpm nx test api --coverage
+
+# Run specific test suites
+pnpm nx test api --testPathPattern="market-data"
+```
 
 ### Linting & Formatting
 
 ```bash
-# Format code
-pnpm prettier --write .
-
 # Lint code
 pnpm lint
 
 # Fix linting issues
 pnpm lint:fix
+
+# Format code (runs automatically on commit)
+pnpm prettier --write .
 ```
 
 ### Building
 
 ```bash
-# Build API
+# Build for production
 pnpm nx build api
 
-# Build playground
-pnpm nx build api-playground
+# Build with optimizations
+pnpm nx build api --prod
 ```
 
 ## 🔒 Security Notes
 
-- YNAB API tokens are stored as environment variables (not persisted)
-- Investment config files should be secured (consider private GitHub repos or protected URLs)
-- All API communication uses HTTPS in production
-- No sensitive data is stored locally - everything is memory-cached only
+- **API Keys**: Store all API keys securely in environment variables, never in code
+- **YNAB Token**: Your YNAB Personal Access Token has full access to your budget - keep it secure
+- **HTTPS Config**: Use HTTPS URLs for your investment configuration files
+- **Network Security**: Consider running behind a reverse proxy in production
+- **Access Control**: The API has no built-in authentication - secure it at the network level
 
 ## 🚀 Deployment
 
 ### Environment Setup
 
-1. Set up a web server to host your investment config YAML file
-2. Configure environment variables (YNAB token, config URL, optional API keys)
-3. Set up reverse proxy (nginx recommended)
-4. Configure SSL certificates
+1. **Create production environment file**:
+
+   ```bash
+   cp .env.example .env.production
+   # Edit with production values
+   ```
+
+2. **Required environment variables**:
+
+   ```bash
+   NODE_ENV=production
+   PORT=3000
+   YNAB_API_KEY=your_production_ynab_token
+   INVESTMENTS_CONFIG_FILE_URL=https://your-domain.com/config.yaml
+
+   # At least one market data provider
+   ALPHA_VANTAGE_API_KEY=your_key
+   POLYGON_API_KEY=your_key
+   FINNHUB_API_KEY=your_key
+   COINMARKETCAP_API_KEY=your_key
+   ```
 
 ### Production Deployment
 
-```bash
-# Build for production
-pnpm nx build api --configuration=production
+#### Docker Deployment
 
-# Start production server
-node dist/apps/api/main.js
+```bash
+# Build production image
+docker build -t ynab-investments-sync .
+
+# Run with environment file
+docker run --env-file .env.production -p 3000:3000 ynab-investments-sync
 ```
 
-### Docker Deployment (Optional)
+#### Node.js Deployment
 
-```dockerfile
-FROM node:18-alpine
-WORKDIR /app
-COPY dist/apps/api ./
-COPY package.json ./
-RUN npm install --production
-EXPOSE 3000
-CMD ["node", "main.js"]
+```bash
+# Build the application
+pnpm nx build api --prod
+
+# Install production dependencies only
+pnpm install --prod --frozen-lockfile
+
+# Start the application
+NODE_ENV=production node dist/apps/api/main.js
+```
+
+#### Process Management
+
+Use a process manager like PM2 for production:
+
+```bash
+# Install PM2
+npm install -g pm2
+
+# Start the application
+pm2 start dist/apps/api/main.js --name ynab-sync
+
+# Save PM2 configuration
+pm2 save
+
+# Setup startup script
+pm2 startup
 ```
 
 ## 🤝 Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests for new functionality
-5. Ensure all tests pass
-6. Submit a pull request
+1. **Fork the repository**
+2. **Create a feature branch**: `git checkout -b feature/amazing-feature`
+3. **Make your changes** and add tests
+4. **Run the test suite**: `pnpm nx test api`
+5. **Ensure linting passes**: `pnpm lint`
+6. **Commit your changes**: `git commit -m 'Add amazing feature'`
+7. **Push to the branch**: `git push origin feature/amazing-feature`
+8. **Open a Pull Request**
+
+### Development Guidelines
+
+- Follow TypeScript best practices
+- Add unit tests for new functionality
+- Update documentation for API changes
+- Use conventional commit messages
+- Ensure all tests pass before submitting
 
 ## 📝 License
 
