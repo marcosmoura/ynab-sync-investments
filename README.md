@@ -2,6 +2,8 @@
 
 A lightweight, self-hosted application that automatically syncs investment portfolio values to YNAB using real-time market data. No database required - operates entirely with in-memory storage and external config files.
 
+Please note that most of this code was generated with AI, powered by Claude Sonnet 4.
+
 ## 🚀 Features
 
 - **File-Based Configuration**: Uses external YAML config files for investment holdings
