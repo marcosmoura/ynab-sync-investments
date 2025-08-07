@@ -123,6 +123,8 @@ accounts:
       TSLA: 15.0 # 15 shares of Tesla
 ```
 
+Please check the [investment-config.example.yaml](./investment-config.example.yaml) for a complete example.
+
 ## 📱 API Endpoints
 
 The API provides the following endpoints:
