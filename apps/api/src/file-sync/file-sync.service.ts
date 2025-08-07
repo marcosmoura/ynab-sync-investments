@@ -59,29 +59,15 @@ export class FileSyncService {
       this.logger.log(`Fetching config from URL: ${configFileUrl}`);
 
       // Fetch the remote YAML file
-      let fileContent: string;
-      try {
-        const response = await fetch(configFileUrl);
-
-        if (!response.ok) {
-          this.logger.warn(
-            `Failed to fetch config file: ${response.status} ${response.statusText}`,
-          );
-          return;
-        }
-
-        fileContent = await response.text();
-      } catch (error) {
-        this.logger.warn(`Config file could not be fetched: ${error.message}`);
-        return;
+      const fileContent = await this.fetchConfigFile(configFileUrl);
+      if (!fileContent) {
+        return; // Error already logged in fetchConfigFile
       }
 
-      // Parse YAML content
-      const config = yaml.load(fileContent) as YamlConfig;
-
-      if (!config || !config.accounts || !Array.isArray(config.accounts)) {
-        this.logger.error('Invalid config file format');
-        return;
+      // Parse and process the config
+      const config = this.parseConfigFile(fileContent);
+      if (!config) {
+        return; // Error already logged in parseConfigFile
       }
 
       this.logger.log(`Found ${config.accounts.length} accounts in config file`);
@@ -100,6 +86,48 @@ export class FileSyncService {
     } catch (error) {
       this.logger.error('Error processing config file', error);
       throw error;
+    }
+  }
+
+  private async fetchConfigFile(configFileUrl: string): Promise<string | null> {
+    try {
+      // Add cache-busting query parameter and headers to ensure fresh content
+      const cacheBustUrl = `${configFileUrl}${configFileUrl.includes('?') ? '&' : '?'}_t=${Date.now()}`;
+
+      const response = await fetch(cacheBustUrl, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          Pragma: 'no-cache',
+          Expires: '0',
+        },
+      });
+
+      if (!response.ok) {
+        this.logger.warn(`Failed to fetch config file: ${response.status} ${response.statusText}`);
+        return null;
+      }
+
+      return await response.text();
+    } catch (error) {
+      this.logger.warn(`Config file could not be fetched: ${error.message}`);
+      return null;
+    }
+  }
+
+  private parseConfigFile(fileContent: string): YamlConfig | null {
+    try {
+      const config = yaml.load(fileContent) as YamlConfig;
+
+      if (!config || !config.accounts || !Array.isArray(config.accounts)) {
+        this.logger.error('Invalid config file format');
+        return null;
+      }
+
+      return config;
+    } catch (error) {
+      this.logger.error('Failed to parse config file', error);
+      return null;
     }
   }
 
