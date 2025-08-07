@@ -51,7 +51,7 @@ export class ApiClient {
   }
 
   async triggerFileSync(): Promise<{ message: string }> {
-    return this.request('/trigger', {
+    return this.request('/sync', {
       method: 'GET',
     });
   }

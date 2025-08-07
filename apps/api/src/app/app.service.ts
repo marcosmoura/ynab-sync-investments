@@ -14,7 +14,7 @@ export class AppService {
       version: '1.0.0',
       status: 'running',
       endpoints: {
-        'GET /trigger': 'To perform a manual file sync',
+        'GET /sync': 'To perform a manual file sync',
       },
     };
   }

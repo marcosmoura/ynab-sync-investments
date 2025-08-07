@@ -17,7 +17,7 @@ NestJS backend API for synchronizing investment portfolios with YNAB accounts us
 ### Core Endpoints
 
 - **`GET /api`**: Get application information and health status
-- **`GET /api/trigger`**: Manually trigger configuration fetch and YNAB sync
+- **`GET /api/sync`**: Manually trigger configuration fetch and YNAB sync
 
 ### Response Examples
 
@@ -32,7 +32,7 @@ NestJS backend API for synchronizing investment portfolios with YNAB accounts us
 }
 ```
 
-#### Manual Sync Trigger (`GET /api/trigger`)
+#### Manual Sync Trigger (`GET /api/sync`)
 
 ```json
 {

@@ -11,7 +11,7 @@ export class AppController {
     return this.appService.getData();
   }
 
-  @Get('trigger')
+  @Get('/sync')
   async triggerFileSync(): Promise<{ message: string }> {
     return this.appService.triggerFileSync();
   }

@@ -43,7 +43,7 @@ describe('AppController', () => {
         version: '1.0.0',
         status: 'running',
         endpoints: {
-          'GET /trigger': 'To perform a manual file sync',
+          'GET /sync': 'To perform a manual file sync',
         },
       });
     });
@@ -62,7 +62,7 @@ describe('AppController', () => {
         version: '2.0.0',
         status: 'test',
         endpoints: {
-          'GET /trigger': 'To perform a manual file sync',
+          'GET /sync': 'To perform a manual file sync',
         },
       };
       vi.spyOn(appService, 'getData').mockReturnValue(expectedData);
@@ -128,7 +128,7 @@ describe('AppService', () => {
         version: '1.0.0',
         status: 'running',
         endpoints: {
-          'GET /trigger': 'To perform a manual file sync',
+          'GET /sync': 'To perform a manual file sync',
         },
       });
     });

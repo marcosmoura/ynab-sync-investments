@@ -132,7 +132,7 @@ The API provides the following endpoints:
 ### Core Endpoints
 
 - **`GET /api`**: Application information and health status
-- **`GET /api/trigger`**: Manually trigger a file sync and YNAB update
+- **`GET /api/sync`**: Manually trigger a file sync and YNAB update
 
 ## 🔄 How It Works
 

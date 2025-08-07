@@ -33,14 +33,14 @@ describe('AppController (e2e)', () => {
         version: '1.0.0',
         status: 'running',
         endpoints: {
-          'GET /trigger': 'To perform a manual file sync',
+          'GET /sync': 'To perform a manual file sync',
         },
       });
   });
 
-  it('/trigger (GET)', () => {
+  it('/sync (GET)', () => {
     return request(app.getHttpServer())
-      .get('/api/trigger')
+      .get('/api/sync')
       .expect(200)
       .expect((res) => {
         expect(res.body).toHaveProperty('message');
