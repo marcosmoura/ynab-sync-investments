@@ -33,7 +33,6 @@ export default defineConfig({
         // All dependencies should be external for Node.js apps
         /^@nestjs/,
         /^rxjs/,
-        /^typeorm/,
         /^pg/,
         /^class-transformer/,
         /^class-validator/,

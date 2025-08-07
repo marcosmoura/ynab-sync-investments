@@ -1,10 +1,7 @@
 import { beforeEach, vi } from 'vitest';
 
-// Set NODE_ENV to test early to disable TypeORM logging
+// Set NODE_ENV to test early
 process.env.NODE_ENV = 'test';
-
-// Suppress TypeORM query logging
-process.env.TYPEORM_LOGGING = 'false';
 
 // Create a silent console mock
 const silentConsole = {

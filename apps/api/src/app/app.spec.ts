@@ -1,6 +1,8 @@
 import { Test } from '@nestjs/testing';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
+import { FileSyncService } from '@/file-sync/file-sync.service';
+
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -11,7 +13,16 @@ describe('AppController', () => {
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
       controllers: [AppController],
-      providers: [AppService],
+      providers: [
+        AppService,
+        {
+          provide: FileSyncService,
+          useValue: {
+            triggerManualFileSync: vi.fn(),
+            getCachedConfig: vi.fn(),
+          },
+        },
+      ],
     }).compile();
 
     appService = moduleRef.get(AppService);

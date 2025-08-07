@@ -5,6 +5,8 @@ import fs from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
+import './check-setup';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -77,8 +79,6 @@ try {
 const playgroundPath = join(__dirname, '../../../dist/apps/api-playground/main.cjs');
 
 console.log('🎮 Running playground...\n');
-
-console.log(playgroundPath, '\n');
 
 // Forward command-line arguments to the main process
 const args = process.argv.slice(2);

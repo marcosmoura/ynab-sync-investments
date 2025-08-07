@@ -55,61 +55,6 @@
         "cwd": "apps/api",
         "command": "npx tsgo --noEmit -p tsconfig.json"
       }
-    },
-    "migration:generate": {
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "npx typeorm-ts-node-commonjs migration:generate -d typeorm.config.ts",
-        "cwd": "apps/api",
-        "env": {
-          "TS_NODE_PROJECT": "tsconfig.app.json",
-          "NODE_OPTIONS": "--require tsconfig-paths/register"
-        }
-      }
-    },
-    "migration:run": {
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "npx typeorm-ts-node-commonjs migration:run -d typeorm.config.ts",
-        "cwd": "apps/api",
-        "env": {
-          "TS_NODE_PROJECT": "tsconfig.app.json",
-          "NODE_OPTIONS": "--require tsconfig-paths/register"
-        }
-      }
-    },
-    "migration:revert": {
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "npx typeorm-ts-node-commonjs migration:revert -d typeorm.config.ts",
-        "cwd": "apps/api",
-        "env": {
-          "TS_NODE_PROJECT": "tsconfig.app.json",
-          "NODE_OPTIONS": "--require tsconfig-paths/register"
-        }
-      }
-    },
-    "migration:create": {
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "npx typeorm-ts-node-commonjs migration:create",
-        "cwd": "apps/api",
-        "env": {
-          "TS_NODE_PROJECT": "tsconfig.app.json",
-          "NODE_OPTIONS": "--require tsconfig-paths/register"
-        }
-      }
-    },
-    "migration:show": {
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "npx typeorm-ts-node-commonjs migration:show -d typeorm.config.ts",
-        "cwd": "apps/api",
-        "env": {
-          "TS_NODE_PROJECT": "tsconfig.app.json",
-          "NODE_OPTIONS": "--require tsconfig-paths/register"
-        }
-      }
     }
   }
 }

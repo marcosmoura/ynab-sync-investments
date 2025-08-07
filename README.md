@@ -1,32 +1,32 @@
 # YNAB Investments Sync
 
-An application that integrates with YNAB API to automatically update investment account balances on a configurable schedule. Self-hosted solution with no login required.
+A lightweight, self-hosted application that automatically syncs investment portfolio values to YNAB using real-time market data. No database required - operates entirely with in-memory storage and external config files.
 
 ## 🚀 Features
 
-- **Asset Management**: Add, edit, and delete investment assets (stocks, crypto, bonds, etc.)
-- **YNAB Integration**: Seamless integration with YNAB API for account management
-- **Automated Sync**: Configurable schedules for automatic portfolio synchronization
-- **Real-time Market Data**: Fetch current asset prices from market data providers
-- **Multi-Currency Support**: Automatic currency conversion based on YNAB account settings
+- **File-Based Configuration**: Uses external YAML config files for investment holdings
+- **Real-Time Market Data**: Fetches current asset prices from multiple market data providers
+- **Automatic Scheduling**: Daily config fetching and configurable YNAB sync schedules
+- **YNAB Integration**: Direct integration with YNAB API for account balance updates
+- **Multi-Asset Support**: Stocks, crypto, bonds, ETFs, and other investment assets
+- **Currency Conversion**: Automatic conversion to your YNAB budget currency
 - **Self-Hosted**: No external services required, complete control over your data
+- **Memory-Only Storage**: No database setup needed - all data cached in memory
 
 ## 🏗️ Architecture
 
 This is an Nx monorepo containing:
 
 - **`apps/api`**: NestJS backend with REST API and scheduled sync jobs
-- **`apps/api-playground`**: Comprehensive testing application for the API
-- **`apps/web`**: Frontend web application (to be implemented)
-- **`scripts/`**: Development and deployment scripts
+- **`apps/api-playground`**: Testing application to validate API functionality
 
 ## 🛠️ Tech Stack
 
 ### Backend
 
 - **NestJS**: Node.js framework with TypeScript
-- **TypeORM**: Database ORM with PostgreSQL
-- **Scheduling**: Cron-based automated sync jobs
+- **Scheduling**: NestJS cron-based automated sync jobs
+- **Market Data**: Multiple provider support (Alpha Vantage, Polygon, Finnhub, CoinMarketCap)
 - **Validation**: Class-validator for request validation
 
 ### Development
@@ -35,85 +35,122 @@ This is an Nx monorepo containing:
 - **pnpm**: Fast, efficient package manager
 - **TypeScript**: Type-safe development
 - **Vitest**: Unit and integration testing
-- **OXLint**: Fast linting with oxlint
+- **OXLint and ESLint**: Fast linting
 - **Prettier**: Code formatting
-- **Docker**: Containerized database for development
 
 ## 🚀 Quick Start
 
-1. **Setup the environment**:
+1. **Install dependencies**:
 
    ```bash
-   ./scripts/setup.sh
+   pnpm install
    ```
 
-2. **Start the development environment**:
+2. **Configure environment variables**:
 
    ```bash
-   # Start database
-   docker-compose up -d postgres
+   cp .env.example .env
+   # Edit .env with your configuration
+   ```
 
-   # Start API server
+3. **Start the API server**:
+
+   ```bash
    pnpm nx serve api
-
-   # Start web application (when ready)
-   pnpm nx serve web
    ```
 
-3. **Access the application**:
+4. **Test the setup**:
+
+   ```bash
+   pnpm nx run api-playground:run-playground
+   ```
+
+5. **Access the application**:
    - API: <http://localhost:3000/api>
-   - Database Admin: <http://localhost:8080>
-   - Web App: <http://localhost:4200> (when implemented)
+   - Swagger Documentation: <http://localhost:3000/api/docs>
 
 ## 📋 Prerequisites
 
 - **Node.js** (v18 or higher)
 - **pnpm** (package manager)
-- **Docker** (for local database)
 - **YNAB Personal Access Token** ([Get one here](https://app.youneedabudget.com/settings/developer))
 
 ## ⚙️ Configuration
 
-Create `apps/api/.env` from the example file:
+### Environment Variables
+
+Create `.env` in the project root:
 
 ```bash
-cp apps/api/.env.example apps/api/.env
+# YNAB Configuration
+YNAB_API_KEY=your_ynab_personal_access_token
+
+# Investment Config File URL
+INVESTMENTS_CONFIG_FILE_URL=https://example.com/path/to/your/investments.yaml
+
+# Optional: Market Data Provider API Keys (for better coverage)
+ALPHA_VANTAGE_API_KEY=your_api_key
+POLYGON_API_KEY=your_api_key
+FINNHUB_API_KEY=your_api_key
+COINMARKETCAP_API_KEY=your_api_key
 ```
 
-Update the configuration:
+### Investment Config File
 
-- Database connection settings
-- YNAB API token (configured via web interface)
-- Application ports and URLs
+Create a YAML file accessible via HTTP(S) with your investment holdings:
+
+```yaml
+budget: your_ynab_budget_id
+
+# Optional: Custom sync schedule
+schedule:
+  sync_time: 9pm # Time to sync investments (9pm, 21:00, etc.)
+  sync_frequency: weekly # How often to sync (daily, weekly, monthly)
+
+accounts:
+  - account_id: your_ynab_account_id_1
+    holdings:
+      AAPL: 10.5 # 10.5 shares of Apple
+      BTC: 0.25 # 0.25 Bitcoin
+
+  - account_id: your_ynab_account_id_2
+    holdings:
+      GOOGL: 5.0 # 5 shares of Google
+      ETH: 2.0 # 2 Ethereum
+      TSLA: 15.0 # 15 shares of Tesla
+```
 
 ## 📱 API Endpoints
 
-### Assets Management
+### File Sync
 
-- `GET /api/assets` - List all assets
-- `POST /api/assets` - Create new asset
-- `PATCH /api/assets/:id` - Update asset
-- `DELETE /api/assets/:id` - Delete asset
-
-### User Settings
-
-- `GET /api/settings` - Get user settings
-- `POST /api/settings` - Save user settings
-- `PATCH /api/settings` - Update user settings
+- `POST /api/file-sync/trigger` - Trigger manual file sync and YNAB update
 
 ### YNAB Integration
 
+- `POST /api/ynab/budgets` - Fetch YNAB budgets
 - `POST /api/ynab/accounts` - Fetch YNAB accounts
-- `POST /api/ynab/sync` - Trigger manual sync
 
-## 🔄 Sync Schedules
+### Market Data
 
-- **Daily**: Every day
-- **Every Two Days**: Every other day
-- **Weekly**: Every Monday
-- **Every Two Weeks**: Every other Monday
-- **Monthly (First)**: First day of each month
-- **Monthly (Last)**: Last day of each month
+- `POST /api/market-data/bulk-price` - Get current asset prices
+
+## 🔄 How It Works
+
+1. **Daily Config Fetch** (9 PM UTC): Fetches your investment config file
+2. **Change Detection**: Compares with cached version to detect changes
+3. **Auto-Sync Trigger**: If config changed or it's the first fetch, triggers YNAB sync
+4. **Market Data**: Fetches real-time prices for all assets in your holdings
+5. **Portfolio Calculation**: Calculates total value per account (quantity × current price)
+6. **YNAB Update**: Updates account balances in YNAB via reconciliation transactions
+7. **Scheduled Sync**: Runs additional syncs based on config schedule (default: weekly)
+
+### Sync Schedule Options
+
+- **Default**: Weekly on Sunday at 9 PM UTC
+- **Custom**: Define your own cron expression in the config file
+- **Constraints**: Maximum once per day, minimum once per month
+- **Manual**: Trigger anytime via API endpoint
 
 ## 🧪 Development
 
@@ -123,32 +160,27 @@ Update the configuration:
 # Unit tests
 pnpm nx test api
 
-# E2E tests
-pnpm nx e2e api
-
-# Test coverage
+# Unit tests with coverage
 pnpm nx test api --coverage
 ```
 
 ### API Playground
 
-The project includes a comprehensive testing application that simulates real-world usage scenarios:
+The project includes a comprehensive testing application that validates the new file-sync functionality:
 
 ```bash
-# Configure YNAB credentials in apps/api/.env
+# Configure YNAB credentials and config file URL in .env
 # Then run the playground
 pnpm nx run api-playground:run-playground
 ```
 
 The playground tests:
 
-- User settings management
-- YNAB API integration
-- Asset management (crypto & investments)
-- Sync process execution
-- Result validation
-
-See [apps/api-playground/README.md](apps/api-playground/README.md) for detailed setup instructions.
+- API health checks
+- YNAB API integration and budget access
+- File sync process (fetch config, parse, sync to YNAB)
+- Market data provider integration
+- End-to-end portfolio value calculation
 
 ### Linting & Formatting
 
@@ -169,68 +201,23 @@ pnpm lint:fix
 # Build API
 pnpm nx build api
 
-# Build all apps
-pnpm build
-```
-
-## 🐳 Docker Development
-
-The project includes Docker Compose for local development:
-
-```bash
-# Start all services
-docker-compose up -d
-
-# Start only database
-docker-compose up -d postgres
-
-# View logs
-docker-compose logs -f
-
-# Stop services
-docker-compose down
+# Build playground
+pnpm nx build api-playground
 ```
 
 ## 🔒 Security Notes
 
-- YNAB API tokens are stored encrypted in the database
+- YNAB API tokens are stored as environment variables (not persisted)
+- Investment config files should be secured (consider private GitHub repos or protected URLs)
 - All API communication uses HTTPS in production
-- Database credentials should be secured in production
-- Consider using environment-specific configuration files
-
-## 🗃️ Database Schema
-
-The application uses PostgreSQL with TypeORM migrations for better maintainability:
-
-- **Assets**: Investment assets with symbol, amount, and YNAB account mapping
-- **UserSettings**: Application configuration including YNAB token and sync schedule
-
-### Migration Management
-
-The project uses TypeORM migrations instead of auto-synchronization for production safety:
-
-```bash
-# Run database migrations
-nx run api:migration:run
-
-# Generate new migration after entity changes
-nx run api:migration:generate
-
-# Create blank migration
-nx run api:migration:create
-
-# Revert last migration
-nx run api:migration:revert
-```
-
-For detailed migration documentation, see [DATABASE_MIGRATIONS.md](docs/DATABASE_MIGRATIONS.md).
+- No sensitive data is stored locally - everything is memory-cached only
 
 ## 🚀 Deployment
 
 ### Environment Setup
 
-1. Set up PostgreSQL database
-2. Configure environment variables
+1. Set up a web server to host your investment config YAML file
+2. Configure environment variables (YNAB token, config URL, optional API keys)
 3. Set up reverse proxy (nginx recommended)
 4. Configure SSL certificates
 
@@ -241,7 +228,19 @@ For detailed migration documentation, see [DATABASE_MIGRATIONS.md](docs/DATABASE
 pnpm nx build api --configuration=production
 
 # Start production server
-npm start
+node dist/apps/api/main.js
+```
+
+### Docker Deployment (Optional)
+
+```dockerfile
+FROM node:18-alpine
+WORKDIR /app
+COPY dist/apps/api ./
+COPY package.json ./
+RUN npm install --production
+EXPOSE 3000
+CMD ["node", "main.js"]
 ```
 
 ## 🤝 Contributing
@@ -262,3 +261,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - [YNAB API](https://api.youneedabudget.com/) for the excellent personal finance API
 - [NestJS](https://nestjs.com/) for the robust Node.js framework
 - [Nx](https://nx.dev/) for monorepo management
+- Market data providers for real-time pricing data

@@ -5,13 +5,10 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "db": "tsx scripts/db.ts",
-    "healthcheck": "tsx scripts/health-check.ts",
     "lint": "oxlint . && eslint .",
     "lint-staged": "lint-staged",
     "lint:fix": "oxlint --fix . && eslint --fix .",
-    "prepare": "husky",
-    "setup": "tsx scripts/setup.ts"
+    "prepare": "husky"
   },
   "devDependencies": {
     "@nx/devkit": "21.3.11",

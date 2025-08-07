@@ -127,9 +127,13 @@ export class CoinMarketCapService implements MarketDataProvider {
         }
       }
 
+      const found = results.map((r) => r.symbol).join(', ');
+      const foundSymbols = found ? `[${found}]` : 'none';
+
       this.logger.debug(
-        `CoinMarketCap found ${results.length} results for symbols [${symbolsParam}]`,
+        `CoinMarketCap found ${results.length} results for symbols [${symbolsParam}]: ${foundSymbols}`,
       );
+
       return results;
     } catch (error) {
       this.logger.error(

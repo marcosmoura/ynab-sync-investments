@@ -26,8 +26,9 @@ async function main(): Promise<void> {
     const requiredVars = [
       'YNAB_API_KEY',
       'YNAB_BUDGET_ID',
-      'YNAB_CRYPTO_ACCOUNT_ID',
       'YNAB_INVESTMENTS_ACCOUNT_ID',
+      'YNAB_CRYPTO_ACCOUNT_ID',
+      'INVESTMENTS_CONFIG_FILE_URL',
     ] as const;
 
     console.log('\n📋 YNAB Configuration:');
