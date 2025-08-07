@@ -19,24 +19,6 @@
         }
       }
     },
-    "serve": {
-      "continuous": true,
-      "executor": "@nx/js:node",
-      "defaultConfiguration": "development",
-      "dependsOn": ["build"],
-      "options": {
-        "buildTarget": "api-playground:build",
-        "runBuildTargetDependencies": false
-      },
-      "configurations": {
-        "development": {
-          "buildTarget": "api-playground:build:development"
-        },
-        "production": {
-          "buildTarget": "api-playground:build:production"
-        }
-      }
-    },
     "run": {
       "executor": "nx:run-commands",
       "dependsOn": ["build"],

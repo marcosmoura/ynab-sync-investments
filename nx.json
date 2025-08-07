@@ -8,6 +8,9 @@
   "tui": {
     "enabled": false
   },
+  "cli": {
+    "packageManager": "pnpm"
+  },
   "plugins": [
     {
       "plugin": "@nx/vite/plugin",
