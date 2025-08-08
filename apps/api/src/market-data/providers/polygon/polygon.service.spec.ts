@@ -87,6 +87,43 @@ describe('PolygonService', () => {
       );
     });
 
+    it('should properly URL encode symbols with special characters', async () => {
+      const mockResponse = {
+        ok: true,
+        json: async () => ({
+          results: [
+            {
+              c: 25.5, // close price
+              h: 26.0, // high
+              l: 24.5, // low
+              o: 25.0, // open
+              v: 10000, // volume
+            },
+          ],
+        }),
+      };
+
+      mockFetch.mockResolvedValue(mockResponse);
+
+      const result = await service.fetchAssetPrices(['NSQE.DE'], 'USD');
+
+      expect(result).toEqual([
+        {
+          symbol: 'NSQE.DE',
+          price: 25.5,
+          currency: 'USD',
+        },
+      ]);
+
+      // Verify that the symbol was properly URL encoded in the request
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.polygon.io/v2/aggs/ticker/NSQE.DE/prev?adjusted=true&apikey=test-key',
+        expect.objectContaining({
+          signal: expect.any(AbortSignal),
+        }),
+      );
+    });
+
     it('should try indices for symbols not found in stocks', async () => {
       // First call for stock returns no results
       mockFetch

@@ -163,6 +163,28 @@ describe('MarketDataService', () => {
 
       expect(result).toEqual(mockResult);
     });
+
+    it('should handle symbols with special characters (e.g., German market symbols)', async () => {
+      const symbols = ['NSQE.DE', 'SAP.DE'];
+      const mockResults = [
+        { symbol: 'NSQE.DE', price: 25.5, currency: 'USD' },
+        { symbol: 'SAP.DE', price: 120.75, currency: 'USD' },
+      ];
+
+      // CoinMarketCap returns empty array since it filters out symbols with special chars
+      vi.mocked(coinMarketCapService.fetchAssetPrices).mockResolvedValue([]);
+
+      // Finnhub should handle symbols with special characters (with proper URL encoding)
+      vi.mocked(finnhubService.fetchAssetPrices).mockResolvedValue(mockResults);
+
+      const result = await service.getAssetPrices(symbols);
+
+      // Verify that the service attempts to use all providers and gets results
+      expect(result).toEqual(mockResults);
+      // Verify that at least one provider was called to handle the symbols
+      expect(coinMarketCapService.fetchAssetPrices).toHaveBeenCalled();
+      expect(finnhubService.fetchAssetPrices).toHaveBeenCalled();
+    });
   });
 
   describe('getAvailableProviders', () => {

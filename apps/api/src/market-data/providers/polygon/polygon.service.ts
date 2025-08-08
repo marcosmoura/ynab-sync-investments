@@ -111,7 +111,7 @@ export class PolygonService implements MarketDataProvider {
         }
 
         // Use the previous day's close price endpoint
-        const stockUrl = `https://api.polygon.io/v2/aggs/ticker/${symbol}/prev?adjusted=true&apikey=${apiKey}`;
+        const stockUrl = `https://api.polygon.io/v2/aggs/ticker/${encodeURIComponent(symbol)}/prev?adjusted=true&apikey=${apiKey}`;
 
         this.logger.debug(`Polygon.io making request for ${symbol}: ${stockUrl}`);
         const response = await fetchWithTimeout(stockUrl, this.timeout);
@@ -190,7 +190,7 @@ export class PolygonService implements MarketDataProvider {
         this.polygonRequestCount++;
 
         // Use the previous day's close price endpoint for indices
-        const indexUrl = `https://api.polygon.io/v2/aggs/ticker/I:${symbol}/prev?adjusted=true&apikey=${apiKey}`;
+        const indexUrl = `https://api.polygon.io/v2/aggs/ticker/I:${encodeURIComponent(symbol)}/prev?adjusted=true&apikey=${apiKey}`;
 
         this.logger.debug(`Polygon.io making index request for ${symbol}: ${indexUrl}`);
         const response = await fetchWithTimeout(indexUrl, this.timeout);

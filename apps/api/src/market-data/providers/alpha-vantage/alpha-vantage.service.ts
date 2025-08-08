@@ -58,7 +58,7 @@ export class AlphaVantageService implements MarketDataProvider {
           await new Promise((resolve) => setTimeout(resolve, 12000));
         }
 
-        const url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${apiKey}`;
+        const url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${encodeURIComponent(symbol)}&apikey=${apiKey}`;
 
         this.logger.debug(`Alpha Vantage making request for ${symbol}: ${url}`);
         const response = await fetchWithTimeout(url, this.timeout);

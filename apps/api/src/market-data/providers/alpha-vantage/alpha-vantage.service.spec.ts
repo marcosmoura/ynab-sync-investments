@@ -158,6 +158,46 @@ describe('AlphaVantageService', () => {
       expect(mockFetch).toHaveBeenCalledTimes(2);
     });
 
+    it('should properly URL encode symbols with special characters', async () => {
+      const mockResponse = {
+        ok: true,
+        json: async () => ({
+          'Global Quote': {
+            '01. symbol': 'NSQE.DE',
+            '02. open': '25.00',
+            '03. high': '26.00',
+            '04. low': '24.50',
+            '05. price': '25.50',
+            '06. volume': '10000',
+            '07. latest trading day': '2024-01-15',
+            '08. previous close': '25.00',
+            '09. change': '0.50',
+            '10. change percent': '2.00%',
+          },
+        }),
+      };
+
+      mockFetch.mockResolvedValue(mockResponse);
+
+      const result = await service.fetchAssetPrices(['NSQE.DE'], 'USD');
+
+      expect(result).toEqual([
+        {
+          symbol: 'NSQE.DE',
+          price: 25.5,
+          currency: 'USD',
+        },
+      ]);
+
+      // Verify that the symbol was properly URL encoded in the request
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=NSQE.DE&apikey=test-key',
+        expect.objectContaining({
+          signal: expect.any(AbortSignal),
+        }),
+      );
+    });
+
     it('should handle error messages', async () => {
       const mockResponse = {
         ok: true,
