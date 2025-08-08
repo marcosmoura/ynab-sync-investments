@@ -248,5 +248,109 @@ describe('PolygonService', () => {
       // Should return empty array when requests fail
       expect(result).toEqual([]);
     });
+
+    it('should successfully fetch options prices', async () => {
+      const mockOptionResponse = {
+        ok: true,
+        json: async () => ({
+          results: [
+            {
+              c: 5.25, // close price for option
+              h: 6.0, // high
+              l: 4.5, // low
+              o: 5.0, // open
+              v: 50000, // volume
+            },
+          ],
+        }),
+      };
+
+      // Mock stock response with no results to test fallback to options
+      const mockStockResponse = {
+        ok: true,
+        json: async () => ({
+          results: [],
+        }),
+      };
+
+      // Mock index response with no results to test fallback to options
+      const mockIndexResponse = {
+        ok: true,
+        json: async () => ({
+          results: [],
+        }),
+      };
+
+      mockFetch
+        .mockResolvedValueOnce(mockStockResponse) // Stock attempt
+        .mockResolvedValueOnce(mockIndexResponse) // Index attempt
+        .mockResolvedValueOnce(mockOptionResponse); // Option attempt
+
+      const result = await service.fetchAssetPrices(['AAPL240119C00150000'], 'USD');
+
+      expect(result).toEqual([
+        {
+          symbol: 'AAPL240119C00150000',
+          price: 5.25,
+          currency: 'USD',
+        },
+      ]);
+
+      // Verify that option API was called with O: prefix
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.polygon.io/v2/aggs/ticker/O%3AAAPL240119C00150000/prev?adjusted=true&apikey=test-key',
+        expect.objectContaining({
+          signal: expect.any(AbortSignal),
+        }),
+      );
+    });
+
+    it('should handle options symbols that already have O: prefix', async () => {
+      const mockOptionResponse = {
+        ok: true,
+        json: async () => ({
+          results: [
+            {
+              c: 2.75,
+              h: 3.0,
+              l: 2.5,
+              o: 2.6,
+              v: 25000,
+            },
+          ],
+        }),
+      };
+
+      // Mock stock and index responses with no results
+      const mockEmptyResponse = {
+        ok: true,
+        json: async () => ({
+          results: [],
+        }),
+      };
+
+      mockFetch
+        .mockResolvedValueOnce(mockEmptyResponse) // Stock attempt
+        .mockResolvedValueOnce(mockEmptyResponse) // Index attempt
+        .mockResolvedValueOnce(mockOptionResponse); // Option attempt
+
+      const result = await service.fetchAssetPrices(['O:TSLA240119P00200000'], 'USD');
+
+      expect(result).toEqual([
+        {
+          symbol: 'O:TSLA240119P00200000',
+          price: 2.75,
+          currency: 'USD',
+        },
+      ]);
+
+      // Verify that option API was called without adding extra O: prefix
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.polygon.io/v2/aggs/ticker/O%3ATSLA240119P00200000/prev?adjusted=true&apikey=test-key',
+        expect.objectContaining({
+          signal: expect.any(AbortSignal),
+        }),
+      );
+    });
   });
 });

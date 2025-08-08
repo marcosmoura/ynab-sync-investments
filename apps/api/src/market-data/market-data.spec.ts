@@ -5,6 +5,7 @@ import { MarketDataService } from './market-data.service';
 import { AlphaVantageService } from './providers/alpha-vantage/alpha-vantage.service';
 import { CoinMarketCapService } from './providers/coinmarketcap/coinmarketcap.service';
 import { FinnhubService } from './providers/finnhub/finnhub.service';
+import { FMPService } from './providers/fmp/fmp.service';
 import { PolygonService } from './providers/polygon/polygon.service';
 import { AssetResult } from './providers/types';
 
@@ -56,6 +57,14 @@ describe('MarketDataService', () => {
             fetchAssetPrices: vi.fn(),
           },
         },
+        {
+          provide: FMPService,
+          useValue: {
+            getProviderName: vi.fn().mockReturnValue('Financial Modeling Prep'),
+            isAvailable: vi.fn().mockReturnValue(true),
+            fetchAssetPrices: vi.fn(),
+          },
+        },
       ],
     }).compile();
 
@@ -76,6 +85,7 @@ describe('MarketDataService', () => {
       expect(availableProviders).toContain('CoinMarketCap');
       expect(availableProviders).toContain('Finnhub');
       expect(availableProviders).toContain('Polygon');
+      expect(availableProviders).toContain('Financial Modeling Prep');
       expect(availableProviders).not.toContain('Alpha Vantage');
     });
   });
@@ -190,7 +200,7 @@ describe('MarketDataService', () => {
   describe('getAvailableProviders', () => {
     it('should return list of available provider names', () => {
       const providers = service.getAvailableProviders();
-      expect(providers).toEqual(['CoinMarketCap', 'Finnhub', 'Polygon']);
+      expect(providers).toEqual(['CoinMarketCap', 'Finnhub', 'Polygon', 'Financial Modeling Prep']);
     });
   });
 });

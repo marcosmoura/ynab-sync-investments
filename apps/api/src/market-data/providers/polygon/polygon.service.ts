@@ -31,21 +31,7 @@ export class PolygonService implements MarketDataProvider {
       throw new Error('Polygon API key not configured');
     }
 
-    // Check and reset rate limit counter
-    const now = Date.now();
-    if (now - this.lastPolygonResetTime >= 60000) {
-      this.polygonRequestCount = 0;
-      this.lastPolygonResetTime = now;
-    }
-
-    // Wait if we've hit the rate limit
-    if (this.polygonRequestCount >= this.polygonApiLimit) {
-      const waitTime = 60000 - (now - this.lastPolygonResetTime);
-      this.logger.log(`Polygon.io rate limit reached, waiting ${waitTime}ms`);
-      await new Promise((resolve) => setTimeout(resolve, waitTime));
-      this.polygonRequestCount = 0;
-      this.lastPolygonResetTime = Date.now();
-    }
+    await this.checkAndWaitForRateLimit();
 
     const results: AssetResult[] = [];
     const remainingSymbolsToFetch = [...symbols];
@@ -76,9 +62,51 @@ export class PolygonService implements MarketDataProvider {
         apiKey,
       );
       results.push(...indicesResults);
+
+      // Remove found symbols from remaining list
+      indicesResults.forEach((result) => {
+        const index = remainingSymbolsToFetch.findIndex(
+          (s) => s.toUpperCase() === result.symbol.toUpperCase(),
+        );
+        if (index !== -1) {
+          remainingSymbolsToFetch.splice(index, 1);
+        }
+      });
+    }
+
+    // Try options for remaining symbols if we still have symbols to fetch
+    if (remainingSymbolsToFetch.length > 0) {
+      const optionsResults = await this.fetchOptionsFromPolygon(
+        remainingSymbolsToFetch,
+        targetCurrency,
+        apiKey,
+      );
+      results.push(...optionsResults);
     }
 
     return results;
+  }
+
+  private async checkAndWaitForRateLimit(): Promise<void> {
+    // Check and reset rate limit counter
+    const now = Date.now();
+    if (now - this.lastPolygonResetTime >= 60000) {
+      this.polygonRequestCount = 0;
+      this.lastPolygonResetTime = now;
+    }
+
+    // Wait if we've hit the rate limit
+    if (this.polygonRequestCount >= this.polygonApiLimit) {
+      const waitTime = 60000 - (now - this.lastPolygonResetTime);
+      this.logger.log(`Polygon.io rate limit reached, waiting ${waitTime}ms`);
+      await new Promise((resolve) => setTimeout(resolve, waitTime));
+      this.polygonRequestCount = 0;
+      this.lastPolygonResetTime = Date.now();
+    }
+  }
+
+  private incrementRequestCount(): void {
+    this.polygonRequestCount++;
   }
 
   private async fetchStocksFromPolygon(
@@ -93,22 +121,8 @@ export class PolygonService implements MarketDataProvider {
     // Try individual stock quotes first (more reliable)
     for (const symbol of symbols) {
       try {
-        this.polygonRequestCount++;
-
-        // Check rate limit before each request
-        const now = Date.now();
-        if (now - this.lastPolygonResetTime >= 60000) {
-          this.polygonRequestCount = 0;
-          this.lastPolygonResetTime = now;
-        }
-
-        if (this.polygonRequestCount > this.polygonApiLimit) {
-          const waitTime = 60000 - (now - this.lastPolygonResetTime);
-          this.logger.log(`Polygon.io rate limit reached, waiting ${waitTime}ms`);
-          await new Promise((resolve) => setTimeout(resolve, waitTime));
-          this.polygonRequestCount = 1;
-          this.lastPolygonResetTime = Date.now();
-        }
+        await this.checkAndWaitForRateLimit();
+        this.incrementRequestCount();
 
         // Use the previous day's close price endpoint
         const stockUrl = `https://api.polygon.io/v2/aggs/ticker/${encodeURIComponent(symbol)}/prev?adjusted=true&apikey=${apiKey}`;
@@ -172,22 +186,8 @@ export class PolygonService implements MarketDataProvider {
     // Try individual index quotes
     for (const symbol of symbols) {
       try {
-        // Check rate limit before each request
-        const now = Date.now();
-        if (now - this.lastPolygonResetTime >= 60000) {
-          this.polygonRequestCount = 0;
-          this.lastPolygonResetTime = now;
-        }
-
-        if (this.polygonRequestCount > this.polygonApiLimit) {
-          const waitTime = 60000 - (now - this.lastPolygonResetTime);
-          this.logger.log(`Polygon.io rate limit reached for indices, waiting ${waitTime}ms`);
-          await new Promise((resolve) => setTimeout(resolve, waitTime));
-          this.polygonRequestCount = 1;
-          this.lastPolygonResetTime = Date.now();
-        }
-
-        this.polygonRequestCount++;
+        await this.checkAndWaitForRateLimit();
+        this.incrementRequestCount();
 
         // Use the previous day's close price endpoint for indices
         const indexUrl = `https://api.polygon.io/v2/aggs/ticker/I:${encodeURIComponent(symbol)}/prev?adjusted=true&apikey=${apiKey}`;
@@ -234,6 +234,77 @@ export class PolygonService implements MarketDataProvider {
         }
       } catch (error) {
         this.logger.debug(`Polygon.io index request error for ${symbol}: ${error.message}`);
+        continue; // Try next symbol
+      }
+    }
+
+    return results;
+  }
+
+  private async fetchOptionsFromPolygon(
+    symbols: string[],
+    targetCurrency: string,
+    apiKey: string,
+  ): Promise<AssetResult[]> {
+    if (!symbols.length) return [];
+
+    const results: AssetResult[] = [];
+
+    // Try individual options quotes
+    for (const symbol of symbols) {
+      try {
+        await this.checkAndWaitForRateLimit();
+        this.incrementRequestCount();
+
+        // Options symbols are formatted as O:AAPL240119C00150000 (O: prefix for options)
+        // If the symbol doesn't start with O:, try adding it
+        const optionSymbol = symbol.startsWith('O:') ? symbol : `O:${symbol}`;
+
+        // Use the previous day's close price endpoint for options
+        const optionUrl = `https://api.polygon.io/v2/aggs/ticker/${encodeURIComponent(optionSymbol)}/prev?adjusted=true&apikey=${apiKey}`;
+
+        this.logger.debug(`Polygon.io making option request for ${symbol}: ${optionUrl}`);
+        const response = await fetchWithTimeout(optionUrl, this.timeout);
+
+        this.logger.debug(
+          `Polygon.io option response for ${symbol}: ${response.status} ${response.statusText}`,
+        );
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          this.logger.debug(
+            `Polygon.io option error for ${symbol}: ${response.status} - ${errorText}`,
+          );
+          continue; // Try next symbol
+        }
+
+        const data = await response.json();
+
+        if (data.results && data.results.length > 0) {
+          const result = data.results[0];
+          let price = result.c; // Close price
+
+          // Convert currency if needed (Polygon returns USD)
+          if (targetCurrency.toUpperCase() !== 'USD') {
+            try {
+              price = await convertCurrency(price, 'USD', targetCurrency, this.timeout);
+            } catch {
+              this.logger.warn(`Currency conversion failed for option ${symbol}, using USD price`);
+            }
+          }
+
+          results.push({
+            symbol: symbol,
+            price,
+            currency: targetCurrency,
+          });
+
+          this.logger.debug(`Successfully fetched option ${symbol}: $${price}`);
+        } else {
+          this.logger.debug(`No data found for option ${symbol} in Polygon.io`);
+        }
+      } catch (error) {
+        this.logger.debug(`Polygon.io option request error for ${symbol}: ${error.message}`);
         continue; // Try next symbol
       }
     }

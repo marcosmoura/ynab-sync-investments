@@ -3,6 +3,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { AlphaVantageService } from './providers/alpha-vantage/alpha-vantage.service';
 import { CoinMarketCapService } from './providers/coinmarketcap/coinmarketcap.service';
 import { FinnhubService } from './providers/finnhub/finnhub.service';
+import { FMPService } from './providers/fmp/fmp.service';
 import { PolygonService } from './providers/polygon/polygon.service';
 import { AssetResult, MarketDataProvider } from './providers/types';
 
@@ -16,6 +17,7 @@ export class MarketDataService {
     private readonly finnhubService: FinnhubService,
     private readonly polygonService: PolygonService,
     private readonly alphaVantageService: AlphaVantageService,
+    private readonly fmpService: FMPService,
   ) {
     // Filter and order providers by availability
     const allProviders = [
@@ -23,6 +25,7 @@ export class MarketDataService {
       this.finnhubService,
       this.polygonService,
       this.alphaVantageService,
+      this.fmpService,
     ];
 
     this.providers = allProviders.filter((provider) => {
