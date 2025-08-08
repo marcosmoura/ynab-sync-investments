@@ -248,25 +248,26 @@ pnpm nx build api --prod
 
 1. **Create production environment file**:
 
-   ```bash
-   cp .env.example .env.production
-   # Edit with production values
-   ```
+```bash
+cp .env.example .env.production
+# Edit with production values
+```
 
 2. **Required environment variables**:
 
-   ```bash
-   NODE_ENV=production
-   PORT=3000
-   YNAB_API_KEY=your_production_ynab_token
-   INVESTMENTS_CONFIG_FILE_URL=https://your-domain.com/config.yaml
+```bash
+NODE_ENV=production
+PORT=3000
+YNAB_API_KEY=your_production_ynab_token
+INVESTMENTS_CONFIG_FILE_URL=https://your-domain.com/config.yaml
 
-   # At least one market data provider
-   ALPHA_VANTAGE_API_KEY=your_key
-   POLYGON_API_KEY=your_key
-   FINNHUB_API_KEY=your_key
-   COINMARKETCAP_API_KEY=your_key
-   ```
+# At least one market data provider
+ALPHA_VANTAGE_API_KEY=your_key
+POLYGON_API_KEY=your_key
+FINNHUB_API_KEY=your_key
+COINMARKETCAP_API_KEY=your_key
+FMP_API_KEY=your_key
+```
 
 ### Production Deployment
 
