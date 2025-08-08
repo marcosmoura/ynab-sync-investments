@@ -25,22 +25,8 @@
         "buildDepsTargetName": "build-deps",
         "watchDepsTargetName": "watch-deps"
       }
-    },
-    {
-      "plugin": "@nx/playwright/plugin",
-      "options": {
-        "targetName": "e2e"
-      }
     }
   ],
-  "generators": {
-    "@nx/web:application": {
-      "style": "css",
-      "linter": "eslint",
-      "unitTestRunner": "vitest",
-      "e2eTestRunner": "playwright"
-    }
-  },
   "targetDefaults": {
     "@nx/esbuild:esbuild": {
       "cache": true,
