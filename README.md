@@ -246,14 +246,14 @@ pnpm nx build api --prod
 
 ### Environment Setup
 
-1. **Create production environment file**:
+- **Create production environment file**:
 
 ```bash
 cp .env.example .env.production
 # Edit with production values
 ```
 
-2. **Required environment variables**:
+- **Required environment variables**:
 
 ```bash
 NODE_ENV=production
