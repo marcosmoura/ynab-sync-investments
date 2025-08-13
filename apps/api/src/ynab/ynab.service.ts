@@ -72,6 +72,24 @@ export class YnabService {
     }
   }
 
+  getCurrencyFromBudgetsResponse(budgets: YnabBudgetDto[]): string {
+    return budgets[0]?.currency || 'USD';
+  }
+
+  async getBudgetCurrency(token: string, targetBudgetId: string): Promise<string> {
+    this.setAuthHeader(token);
+
+    try {
+      const response = await this.fetchWithAuth(`/budgets/${targetBudgetId}`);
+      const data = await response.json();
+
+      return data.data.budget.currency_format?.iso_code || 'USD';
+    } catch (error) {
+      this.logger.error('Failed to fetch YNAB budget currency', error);
+      throw new Error('Failed to fetch YNAB budget currency');
+    }
+  }
+
   async getAccounts(token: string, budgetId?: string): Promise<YnabAccountDto[]> {
     try {
       this.setAuthHeader(token);
@@ -81,19 +99,17 @@ export class YnabService {
 
       if (!targetBudgetId) {
         // Fall back to first budget if no budgetId provided
-        const response = await this.fetchWithAuth('/budgets');
-        const data = await response.json();
-        const budgets = data.data.budgets;
+        const budgets = await this.getBudgets(token);
+
         if (!budgets || budgets.length === 0) {
           throw new Error('No budgets found in YNAB account');
         }
+
         targetBudgetId = budgets[0].id;
-        budgetCurrency = budgets[0].currency_format?.iso_code || 'USD';
+        budgetCurrency = budgets[0].currency || 'USD';
       } else {
         // Get the specific budget details for currency
-        const response = await this.fetchWithAuth(`/budgets/${targetBudgetId}`);
-        const data = await response.json();
-        budgetCurrency = data.data.budget.currency_format?.iso_code || 'USD';
+        budgetCurrency = await this.getBudgetCurrency(token, targetBudgetId);
       }
 
       const accountsResponse = await this.fetchWithAuth(`/budgets/${targetBudgetId}/accounts`);

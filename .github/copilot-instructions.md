@@ -52,7 +52,7 @@ pnpm lint:fix
 ### Application Features
 
 - **File-Based Configuration**: YAML config files for investment holdings (no database)
-- **Market Data Providers**: Multiple integrations (Alpha Vantage, Polygon, Finnhub, CoinMarketCap, FMP)
+- **Market Data Providers**: Multiple integrations (Alpha Vantage, Polygon, Finnhub, CoinMarketCap, Yahoo Finance)
 - **YNAB Integration**: Direct API integration for account balance updates
 - **Scheduling**: NestJS cron-based automated sync jobs
 - **Currency Conversion**: Multi-currency support with automatic conversion

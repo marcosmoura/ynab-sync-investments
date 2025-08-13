@@ -51,7 +51,7 @@ YNAB_API_KEY=your_ynab_personal_access_token
 # Investment Config File URL (Required)
 INVESTMENTS_CONFIG_FILE_URL=https://example.com/path/to/your/investments.yaml
 
-# Market Data Provider API Keys (At least one required)
+# Market Data Provider API Keys (in case none provided, it will default to Yahoo Finance)
 ALPHA_VANTAGE_API_KEY=your_alpha_vantage_key
 POLYGON_API_KEY=your_polygon_key
 FINNHUB_API_KEY=your_finnhub_key

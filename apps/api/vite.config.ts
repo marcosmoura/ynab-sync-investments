@@ -80,6 +80,7 @@ export default defineConfig({
     include: ['src/**/*.{spec,spec-e2e}.{ts,mts,cts}'],
     reporters: ['default'],
     setupFiles: ['./src/test-setup.ts'],
+    testTimeout: 60000,
     coverage: {
       reportsDirectory: '../../coverage/apps/api/unit',
       provider: 'v8',

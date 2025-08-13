@@ -1,14 +1,14 @@
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
-import { describe, it, beforeEach, afterAll, expect } from 'vitest';
+import { describe, it, afterAll, expect, beforeAll } from 'vitest';
 
 import { AppModule } from './app.module';
 
 describe('AppController (e2e)', () => {
   let app: INestApplication;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     const moduleFixture = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
@@ -24,27 +24,39 @@ describe('AppController (e2e)', () => {
     await app.close();
   });
 
-  it('/ (GET)', () => {
-    return request(app.getHttpServer())
-      .get('/api')
-      .expect(200)
-      .expect({
-        message: 'YNAB Investments Sync API',
-        version: '1.0.0',
-        status: 'running',
-        endpoints: {
-          'GET /sync': 'To perform a manual file sync',
-        },
-      });
+  describe('Valid endpoints', () => {
+    it('/ (GET)', () => {
+      return request(app.getHttpServer())
+        .get('/api')
+        .expect(200)
+        .expect({
+          message: 'YNAB Investments Sync API',
+          version: '1.0.0',
+          status: 'running',
+          endpoints: {
+            'GET /sync': 'To perform a manual file sync',
+          },
+        });
+    });
+
+    it('/sync (GET)', () => {
+      return request(app.getHttpServer())
+        .get('/api/sync')
+        .expect(200)
+        .expect((res) => {
+          expect(res.body).toHaveProperty('message');
+          expect(res.body.message).toBe('File sync completed successfully');
+        });
+    });
   });
 
-  it('/sync (GET)', () => {
-    return request(app.getHttpServer())
-      .get('/api/sync')
-      .expect(200)
-      .expect((res) => {
-        expect(res.body).toHaveProperty('message');
-        expect(res.body.message).toBe('File sync completed successfully');
+  describe('Invalid endpoints', () => {
+    it('/invalid-route (GET)', () => {
+      return request(app.getHttpServer()).get('/api/invalid-route').expect(404).expect({
+        statusCode: 404,
+        message: 'Cannot GET /api/invalid-route',
+        error: 'Not Found',
       });
+    });
   });
 });

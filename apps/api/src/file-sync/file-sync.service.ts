@@ -4,21 +4,25 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import * as yaml from 'js-yaml';
 
 import { MarketDataService } from '@/market-data/market-data.service';
+import { convertCurrency } from '@/market-data/utils';
 import { YnabService } from '@/ynab/ynab.service';
+
+type CashData = {
+  amount?: number;
+  currency?: string;
+};
 
 interface YamlConfig {
   budget: string;
   schedule?: {
-    // New format
     sync_time?: string; // Time to sync (e.g., "9pm", "21:00")
     sync_frequency?: 'daily' | 'weekly' | 'monthly'; // How often to sync
-    // Legacy format (for backward compatibility)
-    cron?: string; // Custom cron expression for YNAB sync
     timezone?: string;
   };
   accounts: Array<{
     account_id: string;
     holdings: Record<string, number>;
+    cash?: CashData;
   }>;
 }
 
@@ -191,11 +195,10 @@ export class FileSyncService implements OnModuleInit {
   private setupYnabSyncSchedule(config: YamlConfig): void {
     try {
       // Log the YNAB sync configuration
-      let customCron = config.schedule?.cron;
+      let customCron;
       const timezone = config.schedule?.timezone || 'UTC';
 
-      // Handle new format (sync_time + sync_frequency)
-      if (!customCron && config.schedule?.sync_time && config.schedule?.sync_frequency) {
+      if (config.schedule?.sync_time && config.schedule?.sync_frequency) {
         customCron = this.convertScheduleToCron(
           config.schedule.sync_time,
           config.schedule.sync_frequency,
@@ -287,6 +290,28 @@ export class FileSyncService implements OnModuleInit {
     }
   }
 
+  private convertCashToCurrency(
+    { amount, currency }: CashData = {},
+    toCurrency: string,
+  ): Promise<number> {
+    if (!amount || !currency) {
+      this.logger.warn('No cash data available for conversion');
+      return Promise.resolve(0);
+    }
+
+    this.logger.log(`Adding ${amount} ${currency} in cash`);
+
+    if (currency === toCurrency) {
+      this.logger.log(`Cash is already in target currency (${toCurrency}), no conversion needed`);
+
+      return Promise.resolve(amount);
+    }
+
+    this.logger.log(`Converting cash from ${currency} to ${toCurrency}`);
+
+    return convertCurrency(amount, currency, toCurrency);
+  }
+
   private async performYnabSync(): Promise<void> {
     try {
       if (!this.cachedConfig) {
@@ -314,10 +339,12 @@ export class FileSyncService implements OnModuleInit {
           );
 
           // Get current market prices for all assets in this account
-          const assetPrices = await this.marketDataService.getAssetPrices(symbols, 'USD', true);
+          const currency = await this.ynabService.getBudgetCurrency(ynabToken, config.budget);
+          const cash = await this.convertCashToCurrency(account.cash, currency);
+          const assetPrices = await this.marketDataService.getAssetPrices(symbols, currency, true);
 
           // Calculate total portfolio value for this account
-          let totalValue = 0;
+          let totalValue = cash;
 
           for (const symbol of symbols) {
             const quantity = holdings[symbol];
@@ -327,7 +354,7 @@ export class FileSyncService implements OnModuleInit {
               const assetValue = quantity * assetPrice.price;
               totalValue += assetValue;
               this.logger.log(
-                `  ${symbol}: ${quantity} × $${assetPrice.price} = $${assetValue.toFixed(2)}`,
+                `  ${symbol}: ${quantity} * ${assetPrice.price} = ${assetValue.toFixed(2)}`,
               );
             } else {
               this.logger.warn(`  ${symbol}: Price not found, assuming $0 value`);

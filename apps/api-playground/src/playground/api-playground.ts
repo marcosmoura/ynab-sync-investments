@@ -1,5 +1,4 @@
 import { ApiClient } from './api-client';
-import { TestData } from './test-data';
 
 interface ExecutionStep {
   message: string;
@@ -8,13 +7,15 @@ interface ExecutionStep {
 
 export class ApiPlayground {
   private apiClient: ApiClient;
-  private testData: TestData;
   private readonly apiBaseUrl: string;
 
   constructor() {
     this.apiBaseUrl = process.env.API_BASE_URL || 'http://localhost:3000/api';
     this.apiClient = new ApiClient(this.apiBaseUrl);
-    this.testData = new TestData();
+  }
+
+  getConfigFileUrl(): string | undefined {
+    return process.env.INVESTMENTS_CONFIG_FILE_URL;
   }
 
   async run(): Promise<void> {
@@ -56,7 +57,7 @@ export class ApiPlayground {
   }
 
   private async testFileSyncProcess() {
-    const configUrl = this.testData.getConfigFileUrl();
+    const configUrl = this.getConfigFileUrl();
 
     if (!configUrl) {
       console.log('⚠️  INVESTMENTS_CONFIG_FILE_URL not set, skipping file sync test');

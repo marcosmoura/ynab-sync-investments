@@ -21,6 +21,9 @@ accounts:
       GOOGL: 5.0 # Google
       NVDA: 12.0 # Nvidia
       NSQE.DE: 15.0 # German market
+    cash:
+      amount: 1000.0 # Cash holdings
+      currency: EUR
 
   # Second Investment Account (e.g., Crypto Wallet)
   - account_id: 'your-ynab-account-id-2' # The YNAB account ID to sync to
@@ -28,3 +31,6 @@ accounts:
       BTC: 0.5 # Bitcoin
       ETH: 2.0 # Ethereum
       ADA: 1000.0 # Cardano
+    cash:
+      amount: 500.0 # Cash holdings
+      currency: USD

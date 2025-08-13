@@ -3,9 +3,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import { AlphaVantageService } from './providers/alpha-vantage/alpha-vantage.service';
 import { CoinMarketCapService } from './providers/coinmarketcap/coinmarketcap.service';
 import { FinnhubService } from './providers/finnhub/finnhub.service';
-import { FMPService } from './providers/fmp/fmp.service';
 import { PolygonService } from './providers/polygon/polygon.service';
+import { RaiffeisenCZService } from './providers/raiffeisen-cz/raiffeisen-cz.service';
 import { AssetResult, MarketDataProvider } from './providers/types';
+import { YahooFinanceService } from './providers/yahoo-finance/yahoo-finance.service';
 
 @Injectable()
 export class MarketDataService {
@@ -13,19 +14,21 @@ export class MarketDataService {
   private readonly providers: MarketDataProvider[] = [];
 
   constructor(
+    private readonly alphaVantageService: AlphaVantageService,
     private readonly coinMarketCapService: CoinMarketCapService,
     private readonly finnhubService: FinnhubService,
     private readonly polygonService: PolygonService,
-    private readonly alphaVantageService: AlphaVantageService,
-    private readonly fmpService: FMPService,
+    private readonly raiffeisenCZService: RaiffeisenCZService,
+    private readonly yahooFinanceService: YahooFinanceService,
   ) {
     // Filter and order providers by availability
     const allProviders = [
-      this.coinMarketCapService,
       this.finnhubService,
-      this.polygonService,
+      this.yahooFinanceService,
+      this.raiffeisenCZService,
       this.alphaVantageService,
-      this.fmpService,
+      this.polygonService,
+      this.coinMarketCapService,
     ];
 
     this.providers = allProviders.filter((provider) => {
@@ -62,6 +65,7 @@ export class MarketDataService {
       if (remainingSymbols.length === 0) break;
 
       try {
+        this.logger.debug(`Using ${targetCurrency} as target currency`);
         this.logger.debug(
           `Trying ${provider.getProviderName()} for symbols: [${remainingSymbols.join(', ')}]`,
         );

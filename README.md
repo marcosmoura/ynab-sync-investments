@@ -266,7 +266,6 @@ ALPHA_VANTAGE_API_KEY=your_key
 POLYGON_API_KEY=your_key
 FINNHUB_API_KEY=your_key
 COINMARKETCAP_API_KEY=your_key
-FMP_API_KEY=your_key
 ```
 
 ### Production Deployment

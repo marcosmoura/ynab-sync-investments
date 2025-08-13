@@ -97,148 +97,88 @@ describe('FinnhubService', () => {
     });
 
     it('should handle multiple symbols', async () => {
-      const mockResponses = [
-        {
-          c: 150.25,
-          d: 2.5,
-          dp: 1.69,
-          h: 151.0,
-          l: 148.0,
-          o: 149.0,
-          pc: 147.75,
-          t: Date.now(),
-        },
-        {
-          c: 3200.5,
-          d: -15.0,
-          dp: -0.47,
-          h: 3220.0,
-          l: 3180.0,
-          o: 3210.0,
-          pc: 3215.5,
-          t: Date.now(),
-        },
-      ];
-
-      mockFetch
-        .mockResolvedValueOnce({
-          ok: true,
-          status: 200,
-          json: () => Promise.resolve(mockResponses[0]),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          status: 200,
-          json: () => Promise.resolve(mockResponses[1]),
-        });
-
+      // Mock fetch for each symbol
+      mockFetch.mockImplementation((url) => {
+        if (url.includes('AAPL')) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: () => Promise.resolve({ c: 150.25 }),
+          });
+        }
+        if (url.includes('GOOGL')) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: () => Promise.resolve({ c: 3200.5 }),
+          });
+        }
+        return Promise.resolve({ ok: false, status: 404 });
+      });
       const result = await service.fetchAssetPrices(['AAPL', 'GOOGL'], 'USD');
-
-      expect(result).toHaveLength(2);
-      expect(result[0]).toEqual({
-        symbol: 'AAPL',
-        price: 150.25,
-        currency: 'USD',
-      });
-      expect(result[1]).toEqual({
-        symbol: 'GOOGL',
-        price: 3200.5,
-        currency: 'USD',
-      });
+      expect(result).toEqual([
+        { symbol: 'AAPL', price: 150.25, currency: 'USD' },
+        { symbol: 'GOOGL', price: 3200.5, currency: 'USD' },
+      ]);
     });
 
     it('should handle API errors gracefully', async () => {
-      mockFetch
-        .mockResolvedValueOnce({
-          ok: false,
-          status: 404,
-          statusText: 'Not Found',
-          text: () => Promise.resolve('Symbol not found'),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          status: 200,
-          json: () =>
-            Promise.resolve({
-              c: 150.25,
-              d: 2.5,
-              dp: 1.69,
-              h: 151.0,
-              l: 148.0,
-              o: 149.0,
-              pc: 147.75,
-              t: Date.now(),
-            }),
-        });
-
-      const result = await service.fetchAssetPrices(['INVALID', 'AAPL'], 'USD');
-
-      expect(result).toHaveLength(1);
-      expect(result[0]).toEqual({
-        symbol: 'AAPL',
-        price: 150.25,
-        currency: 'USD',
+      mockFetch.mockImplementation((url) => {
+        if (url.includes('INVALID')) {
+          return Promise.resolve({
+            ok: false,
+            status: 404,
+            statusText: 'Not Found',
+            text: () => Promise.resolve('Symbol not found'),
+          });
+        }
+        if (url.includes('AAPL')) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: () => Promise.resolve({ c: 150.25 }),
+          });
+        }
+        return Promise.resolve({ ok: false, status: 404 });
       });
+      const result = await service.fetchAssetPrices(['INVALID', 'AAPL'], 'USD');
+      expect(result).toEqual([{ symbol: 'AAPL', price: 150.25, currency: 'USD' }]);
     });
 
     it('should handle network errors gracefully', async () => {
-      mockFetch.mockRejectedValueOnce(new Error('Network error')).mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: () =>
-          Promise.resolve({
-            c: 150.25,
-            d: 2.5,
-            dp: 1.69,
-            h: 151.0,
-            l: 148.0,
-            o: 149.0,
-            pc: 147.75,
-            t: Date.now(),
-          }),
+      mockFetch.mockImplementation((url) => {
+        if (url.includes('NETWORK_ERROR')) {
+          return Promise.reject(new Error('Network error'));
+        }
+        if (url.includes('AAPL')) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: () => Promise.resolve({ c: 150.25 }),
+          });
+        }
+        return Promise.resolve({ ok: false, status: 404 });
       });
-
       const result = await service.fetchAssetPrices(['NETWORK_ERROR', 'AAPL'], 'USD');
-
-      expect(result).toHaveLength(1);
-      expect(result[0]).toEqual({
-        symbol: 'AAPL',
-        price: 150.25,
-        currency: 'USD',
-      });
+      expect(result).toEqual([{ symbol: 'AAPL', price: 150.25, currency: 'USD' }]);
     });
 
     it('should skip symbols with invalid price data', async () => {
-      mockFetch
-        .mockResolvedValueOnce({
-          ok: true,
-          status: 200,
-          json: () => Promise.resolve({ c: 0, d: 0, dp: 0 }), // Invalid price (0)
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          status: 200,
-          json: () =>
-            Promise.resolve({
-              c: 150.25,
-              d: 2.5,
-              dp: 1.69,
-              h: 151.0,
-              l: 148.0,
-              o: 149.0,
-              pc: 147.75,
-              t: Date.now(),
-            }),
-        });
-
-      const result = await service.fetchAssetPrices(['INVALID_PRICE', 'AAPL'], 'USD');
-
-      expect(result).toHaveLength(1);
-      expect(result[0]).toEqual({
-        symbol: 'AAPL',
-        price: 150.25,
-        currency: 'USD',
+      mockFetch.mockImplementation((url) => {
+        if (url.includes('INVALID_PRICE')) {
+          return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ c: 0 }) });
+        }
+        if (url.includes('AAPL')) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: () => Promise.resolve({ c: 150.25 }),
+          });
+        }
+        return Promise.resolve({ ok: false, status: 404 });
       });
+      const result = await service.fetchAssetPrices(['INVALID_PRICE', 'AAPL'], 'USD');
+      expect(result).toEqual([{ symbol: 'AAPL', price: 150.25, currency: 'USD' }]);
     });
 
     it('should handle missing price data gracefully', async () => {

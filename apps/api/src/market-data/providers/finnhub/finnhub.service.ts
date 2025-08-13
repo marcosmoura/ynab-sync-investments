@@ -19,6 +19,29 @@ export class FinnhubService implements MarketDataProvider {
     return !!process.env.FINNHUB_API_KEY;
   }
 
+  async isCrypto(symbol: string, apiKey: string): Promise<boolean> {
+    let supportedCryptoSymbols: Set<string> | null = null;
+
+    this.logger.log(`Finnhub checking if ${symbol} is a crypto asset`);
+
+    try {
+      const url = `https://finnhub.io/api/v1/crypto/symbol?exchange=BINANCE&token=${apiKey}`;
+      const response = await fetchWithTimeout(url, this.timeout);
+
+      if (!response.ok) {
+        supportedCryptoSymbols = new Set();
+      }
+
+      const data = await response.json();
+
+      supportedCryptoSymbols = new Set((data as { symbol: string }[]).map((item) => item.symbol));
+    } catch {
+      supportedCryptoSymbols = new Set();
+    }
+
+    return supportedCryptoSymbols.has(`BINANCE:${symbol.toUpperCase()}USDT`);
+  }
+
   async fetchAssetPrices(symbols: string[], targetCurrency: string): Promise<AssetResult[]> {
     if (!symbols.length) return [];
 
@@ -40,39 +63,38 @@ export class FinnhubService implements MarketDataProvider {
     if (this.finnhubRequestCount >= this.finnhubApiLimit) {
       const waitTime = 60000 - (now - this.lastFinnhubResetTime);
       this.logger.log(`Finnhub rate limit reached, waiting ${waitTime}ms`);
+
       await new Promise((resolve) => setTimeout(resolve, waitTime));
+
       this.finnhubRequestCount = 0;
       this.lastFinnhubResetTime = Date.now();
     }
 
     const results: AssetResult[] = [];
 
-    // Fetch individual stock quotes
     for (const symbol of symbols) {
       try {
         this.finnhubRequestCount++;
-
-        // Check rate limit before each request
         const currentTime = Date.now();
+
         if (currentTime - this.lastFinnhubResetTime >= 60000) {
           this.finnhubRequestCount = 0;
           this.lastFinnhubResetTime = currentTime;
         }
 
-        if (this.finnhubRequestCount > this.finnhubApiLimit) {
-          const waitTime = 60000 - (currentTime - this.lastFinnhubResetTime);
-          this.logger.log(`Finnhub rate limit reached, waiting ${waitTime}ms`);
-          await new Promise((resolve) => setTimeout(resolve, waitTime));
-          this.finnhubRequestCount = 1;
-          this.lastFinnhubResetTime = Date.now();
+        let finnhubSymbol = symbol;
+        const isCryptoAsset = await this.isCrypto(symbol, apiKey);
+
+        if (isCryptoAsset) {
+          finnhubSymbol = `BINANCE:${symbol.toUpperCase()}USDT`;
         }
 
-        // Use the quote endpoint for real-time data
-        const quoteUrl = `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(symbol)}&token=${apiKey}`;
+        const quoteUrl = `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(finnhubSymbol)}&token=${apiKey}`;
+        this.logger.debug(
+          `Finnhub making request for ${symbol} (as ${finnhubSymbol}): ${quoteUrl}`,
+        );
 
-        this.logger.debug(`Finnhub making request for ${symbol}: ${quoteUrl}`);
         const response = await fetchWithTimeout(quoteUrl, this.timeout);
-
         this.logger.debug(
           `Finnhub response for ${symbol}: ${response.status} ${response.statusText}`,
         );
@@ -80,16 +102,14 @@ export class FinnhubService implements MarketDataProvider {
         if (!response.ok) {
           const errorText = await response.text();
           this.logger.debug(`Finnhub error for ${symbol}: ${response.status} - ${errorText}`);
-          continue; // Try next symbol
+          continue;
         }
 
         const data = await response.json();
 
-        // Finnhub returns: { c: current_price, d: change, dp: percent_change, h: high, l: low, o: open, pc: previous_close, t: timestamp }
         if (data.c && data.c > 0) {
-          let price = data.c; // Current price
+          let price = data.c;
 
-          // Convert currency if needed (Finnhub typically returns USD for most symbols)
           if (targetCurrency.toUpperCase() !== 'USD') {
             try {
               price = await convertCurrency(price, 'USD', targetCurrency, this.timeout);
@@ -99,21 +119,19 @@ export class FinnhubService implements MarketDataProvider {
           }
 
           results.push({
-            symbol: symbol,
+            symbol,
             price,
             currency: targetCurrency,
           });
-
           this.logger.debug(`Successfully fetched ${symbol}: $${price}`);
         } else {
           this.logger.debug(`No valid price data found for ${symbol} in Finnhub`);
         }
       } catch (error) {
         this.logger.debug(`Finnhub request error for ${symbol}: ${error.message}`);
-        continue; // Try next symbol
+        continue;
       }
     }
-
     return results;
   }
 }
