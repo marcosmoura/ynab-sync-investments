@@ -1,11 +1,13 @@
 import nx from '@nx/eslint-plugin';
 import importPlugin from 'eslint-plugin-import';
+import markdown from 'eslint-plugin-markdown';
 import oxlint from 'eslint-plugin-oxlint';
 
 export default [
   ...nx.configs['flat/base'],
   ...nx.configs['flat/typescript'],
   ...nx.configs['flat/javascript'],
+  ...markdown.configs.recommended,
   {
     ignores: ['**/dist'],
   },
