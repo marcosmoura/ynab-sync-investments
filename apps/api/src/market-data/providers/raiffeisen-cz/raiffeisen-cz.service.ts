@@ -1,12 +1,16 @@
 import { Logger } from '@nestjs/common';
+import accounting from 'accounting';
 import * as cheerio from 'cheerio';
 
 import { convertCurrency } from '../../utils/currency-converter';
 import { AssetResult, MarketDataProvider } from '../types';
 
+type CheerioPage = ReturnType<typeof cheerio.load>;
+
 export class RaiffeisenCZService implements MarketDataProvider {
   private readonly logger = new Logger(RaiffeisenCZService.name);
   private readonly timeout = 10000;
+  private loadedPages: Map<string, CheerioPage> = new Map();
 
   getProviderName(): string {
     return 'Raiffeisen CZ';
@@ -52,6 +56,22 @@ export class RaiffeisenCZService implements MarketDataProvider {
           });
           continue;
         }
+
+        const certificateRcbPrice = await this.getRaiffeisenCertificateRcbPrice(
+          symbol,
+          targetCurrency,
+        );
+
+        if (this.isValidPrice(certificateRcbPrice)) {
+          results.push({
+            symbol,
+            price: certificateRcbPrice,
+            currency: targetCurrency,
+          });
+          continue;
+        }
+
+        this.logger.warn(`No valid price found for ${symbol} in Raiffeisen CZ`);
       } catch (error) {
         this.logger.error(`Error fetching asset price for ${symbol}: ${error.message}`);
       }
@@ -60,16 +80,38 @@ export class RaiffeisenCZService implements MarketDataProvider {
     return results;
   }
 
-  private async getInformationFromRaiffeisenPage(config: {
+  private loadPage(page: string): CheerioPage {
+    if (this.loadedPages.has(page)) {
+      return this.loadedPages.get(page);
+    }
+
+    const $ = cheerio.load(page);
+
+    this.loadedPages.set(page, $);
+
+    return $;
+  }
+
+  private getPageText(config: {
+    referenceTextSelector: string;
+    referenceSiblingSelector: string;
+    page: CheerioPage;
+  }): string {
+    const { page, referenceTextSelector, referenceSiblingSelector } = config;
+
+    return page(referenceTextSelector).next(referenceSiblingSelector).text();
+  }
+
+  private async getPriceFromRaiffeisenPage(config: {
     priceTextSelector: string;
     priceSiblingSelector: string;
     currencyTextSelector: string;
     currencySiblingSelector: string;
     targetCurrency: string;
-    page: string;
+    html: string;
   }): Promise<number | null> {
     const {
-      page,
+      html,
       priceTextSelector,
       priceSiblingSelector,
       currencyTextSelector,
@@ -77,15 +119,22 @@ export class RaiffeisenCZService implements MarketDataProvider {
       targetCurrency,
     } = config;
 
-    const $ = cheerio.load(page);
+    const $ = this.loadPage(html);
 
-    const priceElement = $(priceTextSelector).next(priceSiblingSelector);
-    const priceTextRaw = priceElement.text();
+    const priceTextRaw = this.getPageText({
+      page: $,
+      referenceTextSelector: priceTextSelector,
+      referenceSiblingSelector: priceSiblingSelector,
+    });
 
-    const currencyText = $(currencyTextSelector).next(currencySiblingSelector);
-    const currency = currencyText.text() || targetCurrency;
+    const currencyTextRaw = this.getPageText({
+      page: $,
+      referenceTextSelector: currencyTextSelector,
+      referenceSiblingSelector: currencySiblingSelector,
+    });
 
-    const price = parseFloat(priceTextRaw.replace(',', '.'));
+    const currency = currencyTextRaw || targetCurrency;
+    const price = accounting.unformat(priceTextRaw);
 
     let convertedPrice = price;
     if (price && !isNaN(price) && currency && targetCurrency && currency !== targetCurrency) {
@@ -95,7 +144,7 @@ export class RaiffeisenCZService implements MarketDataProvider {
     return isNaN(convertedPrice) ? null : convertedPrice;
   }
 
-  private async fetchRaiffeisenPage(baseUrl: string, symbol: string): Promise<string | null> {
+  private async fetchRaiffeisenPageHTML(baseUrl: string, symbol: string): Promise<string | null> {
     try {
       const url = `${baseUrl}/?ISIN=${encodeURIComponent(symbol)}`;
       const response = await fetch(url);
@@ -118,10 +167,13 @@ export class RaiffeisenCZService implements MarketDataProvider {
     symbol: string,
     targetCurrency: string,
   ): Promise<number | null> {
-    const page = await this.fetchRaiffeisenPage('https://investice.rb.cz/en/produkt/stock', symbol);
+    const html = await this.fetchRaiffeisenPageHTML(
+      'https://investice.rb.cz/en/produkt/stock',
+      symbol,
+    );
 
-    return this.getInformationFromRaiffeisenPage({
-      page,
+    return this.getPriceFromRaiffeisenPage({
+      html,
       priceTextSelector: '.striped-list-label:contains("Quote")',
       priceSiblingSelector: '.striped-list-value',
       currencyTextSelector: '.striped-list-label:contains("Currency")',
@@ -134,15 +186,50 @@ export class RaiffeisenCZService implements MarketDataProvider {
     symbol: string,
     targetCurrency: string,
   ): Promise<number | null> {
-    const page = await this.fetchRaiffeisenPage('https://investice.rb.cz/en/produkt/fund', symbol);
+    const html = await this.fetchRaiffeisenPageHTML(
+      'https://investice.rb.cz/en/produkt/fund',
+      symbol,
+    );
 
-    return this.getInformationFromRaiffeisenPage({
-      page,
+    return this.getPriceFromRaiffeisenPage({
+      html,
       priceTextSelector: '.top-info-label:contains("Price")',
       priceSiblingSelector: '.top-info-value',
       currencyTextSelector: '.top-info-label:contains("Currency")',
       currencySiblingSelector: '.top-info-value',
       targetCurrency,
     });
+  }
+
+  private async getRaiffeisenCertificateRcbPrice(
+    symbol: string,
+    targetCurrency: string,
+  ): Promise<number | null> {
+    const html = await this.fetchRaiffeisenPageHTML(
+      'https://investice.rb.cz/en/produkt/certificate-rcb',
+      symbol,
+    );
+
+    const price = await this.getPriceFromRaiffeisenPage({
+      html,
+      priceTextSelector: '.striped-list-label:contains("Denomination / nominal")',
+      priceSiblingSelector: '.striped-list-value',
+      currencyTextSelector: '.striped-list-label:contains("Product currency")',
+      currencySiblingSelector: '.striped-list-value',
+      targetCurrency,
+    });
+
+    const bid = this.getPageText({
+      page: this.loadPage(html),
+      referenceTextSelector: '.top-info-label:contains("Bid")',
+      referenceSiblingSelector: '.top-info-value',
+    });
+
+    if (!price || !bid) {
+      this.logger.error(`Failed to extract price or bid for ${symbol}`);
+      return null;
+    }
+
+    return (price * parseFloat(bid)) / 100;
   }
 }
