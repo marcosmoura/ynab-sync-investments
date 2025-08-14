@@ -18,6 +18,7 @@ describe('PolygonService', () => {
   afterEach(() => {
     process.env = { ...originalEnv };
     vi.restoreAllMocks();
+    vi.useRealTimers();
   });
 
   describe('getProviderName', () => {
@@ -236,17 +237,30 @@ describe('PolygonService', () => {
     });
 
     it('should handle fetch timeout', async () => {
-      mockFetch.mockImplementation(
-        () =>
-          new Promise((_, reject) => {
-            setTimeout(() => reject(new Error('Timeout')), 100);
-          }),
-      );
+      // Use fake timers to speed up the test
+      vi.useFakeTimers();
+      const setTimeoutSpy = vi.spyOn(global, 'setTimeout');
 
-      const result = await service.fetchAssetPrices(['AAPL'], 'USD');
+      // Mock fetch to simulate AbortError (what happens when timeout triggers)
+      mockFetch.mockRejectedValue(new DOMException('The operation was aborted.', 'AbortError'));
 
-      // Should return empty array when requests fail
+      // Start the request
+      const resultPromise = service.fetchAssetPrices(['AAPL'], 'USD');
+
+      // Fast-forward timers to allow any setTimeout calls to execute
+      vi.runAllTimers();
+
+      // Await the result
+      const result = await resultPromise;
+
+      // Should return empty array when requests fail due to timeout
       expect(result).toEqual([]);
+
+      // Verify setTimeout was called at least once (from fetchWithTimeout or rate limiting)
+      expect(setTimeoutSpy).toHaveBeenCalled();
+
+      // Cleanup
+      setTimeoutSpy.mockRestore();
     });
 
     it('should successfully fetch options prices', async () => {

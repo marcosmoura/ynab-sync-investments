@@ -18,6 +18,7 @@ describe('CoinMarketCapService', () => {
   afterEach(() => {
     process.env = { ...originalEnv };
     vi.restoreAllMocks();
+    vi.useRealTimers();
   });
 
   describe('getProviderName', () => {
@@ -184,14 +185,26 @@ describe('CoinMarketCapService', () => {
     });
 
     it('should handle fetch timeout', async () => {
-      mockFetch.mockImplementation(
-        () =>
-          new Promise((_, reject) => {
-            setTimeout(() => reject(new Error('Timeout')), 100);
-          }),
-      );
+      // Use fake timers to speed up the test
+      vi.useFakeTimers();
+      const setTimeoutSpy = vi.spyOn(global, 'setTimeout');
 
-      await expect(service.fetchAssetPrices(['BTC'], 'USD')).rejects.toThrow();
+      // Mock fetch to simulate AbortError (what happens when timeout triggers)
+      mockFetch.mockRejectedValue(new DOMException('The operation was aborted.', 'AbortError'));
+
+      // Start the request
+      const resultPromise = service.fetchAssetPrices(['BTC'], 'USD');
+
+      // Fast-forward timers to allow any setTimeout calls to execute
+      vi.runAllTimers();
+
+      // Await the result and expect it to throw
+      await expect(resultPromise).rejects.toThrow();
+
+      // Verify setTimeout was called at least once (from fetchWithTimeout)
+      expect(setTimeoutSpy).toHaveBeenCalled();
+
+      setTimeoutSpy.mockRestore();
     });
   });
 });
