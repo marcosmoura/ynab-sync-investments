@@ -1,4 +1,5 @@
 import { ConfigService } from '@nestjs/config';
+import { SchedulerRegistry } from '@nestjs/schedule';
 import { Test } from '@nestjs/testing';
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 
@@ -10,6 +11,7 @@ import { FileSyncService } from './file-sync.service';
 describe('FileSyncService', () => {
   let service: FileSyncService;
   let configService: ConfigService;
+  let schedulerRegistry: SchedulerRegistry;
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -35,11 +37,19 @@ describe('FileSyncService', () => {
             getAssetPrices: vi.fn(),
           },
         },
+        {
+          provide: SchedulerRegistry,
+          useValue: {
+            addCronJob: vi.fn(),
+            deleteCronJob: vi.fn(),
+          },
+        },
       ],
     }).compile();
 
     service = moduleRef.get(FileSyncService);
     configService = moduleRef.get(ConfigService);
+    schedulerRegistry = moduleRef.get(SchedulerRegistry);
 
     // Mock fetch globally
     global.fetch = vi.fn();
@@ -195,6 +205,134 @@ accounts:
       // Since the method calls handleScheduledYnabSync internally, we can't directly test it
       // but we can verify it doesn't throw
       expect(spy).not.toHaveBeenCalled(); // handleScheduledYnabSync is called, not fetchAndCacheConfig
+    });
+  });
+
+  describe('Dynamic Cron Job Creation', () => {
+    it('should call SchedulerRegistry methods when custom schedule is configured', async () => {
+      const configUrl = 'https://example.com/config.yaml';
+      const yamlContent = `
+budget: test-budget-id
+schedule:
+  sync_time: "9pm"
+  sync_frequency: daily
+  timezone: "America/New_York"
+accounts:
+  - account_id: account-1
+    holdings:
+      AAPL: 10
+`;
+
+      vi.mocked(configService.get).mockReturnValue(configUrl);
+      vi.mocked(global.fetch).mockResolvedValue({
+        ok: true,
+        text: () => Promise.resolve(yamlContent),
+      } as Response);
+
+      await service.fetchAndCacheConfig();
+
+      // Verify that scheduler registry methods are called
+      expect(schedulerRegistry.deleteCronJob).toHaveBeenCalledWith('custom-ynab-sync');
+      expect(schedulerRegistry.addCronJob).toHaveBeenCalledWith(
+        'custom-ynab-sync',
+        expect.any(Object),
+      );
+    });
+
+    it('should not create dynamic cron when no schedule is configured', async () => {
+      const configUrl = 'https://example.com/config.yaml';
+      const yamlContent = `
+budget: test-budget-id
+accounts:
+  - account_id: account-1
+    holdings:
+      AAPL: 10
+`;
+
+      vi.mocked(configService.get).mockReturnValue(configUrl);
+      vi.mocked(global.fetch).mockResolvedValue({
+        ok: true,
+        text: () => Promise.resolve(yamlContent),
+      } as Response);
+
+      // Clear any previous calls
+      vi.mocked(schedulerRegistry.addCronJob).mockClear();
+      vi.mocked(schedulerRegistry.deleteCronJob).mockClear();
+
+      await service.fetchAndCacheConfig();
+
+      // Should still try to delete (cleanup) but not add
+      expect(schedulerRegistry.deleteCronJob).toHaveBeenCalledWith('custom-ynab-sync');
+      expect(schedulerRegistry.addCronJob).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Fallback Cron Job Behavior', () => {
+    it('should trigger sync when no custom schedule exists', async () => {
+      // Setup a config without custom schedule
+      const configUrl = 'https://example.com/config.yaml';
+      const yamlContent = `
+budget: test-budget-id
+accounts:
+  - account_id: account-1
+    holdings:
+      AAPL: 10
+`;
+
+      vi.mocked(configService.get).mockReturnValue(configUrl);
+      vi.mocked(global.fetch).mockResolvedValue({
+        ok: true,
+        text: () => Promise.resolve(yamlContent),
+      } as Response);
+
+      await service.fetchAndCacheConfig();
+
+      // Mock the private method to avoid actual sync logic
+      const handleScheduledSyncSpy = vi
+        .spyOn(
+          service as unknown as { handleScheduledYnabSync: () => Promise<void> },
+          'handleScheduledYnabSync',
+        )
+        .mockResolvedValue(undefined);
+
+      await service.handleWeeklyYnabSync();
+
+      expect(handleScheduledSyncSpy).toHaveBeenCalledOnce();
+    });
+
+    it('should skip sync when custom schedule exists', async () => {
+      // Setup a config with custom schedule
+      const configUrl = 'https://example.com/config.yaml';
+      const yamlContent = `
+budget: test-budget-id
+schedule:
+  sync_time: "8pm"
+  sync_frequency: daily
+accounts:
+  - account_id: account-1
+    holdings:
+      AAPL: 10
+`;
+
+      vi.mocked(configService.get).mockReturnValue(configUrl);
+      vi.mocked(global.fetch).mockResolvedValue({
+        ok: true,
+        text: () => Promise.resolve(yamlContent),
+      } as Response);
+
+      await service.fetchAndCacheConfig();
+
+      // Mock the private method to verify it's not called
+      const handleScheduledSyncSpy = vi
+        .spyOn(
+          service as unknown as { handleScheduledYnabSync: () => Promise<void> },
+          'handleScheduledYnabSync',
+        )
+        .mockResolvedValue(undefined);
+
+      await service.handleWeeklyYnabSync();
+
+      expect(handleScheduledSyncSpy).not.toHaveBeenCalled();
     });
   });
 });

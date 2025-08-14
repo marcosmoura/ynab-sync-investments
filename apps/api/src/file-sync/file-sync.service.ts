@@ -1,6 +1,7 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { Cron, CronExpression, SchedulerRegistry } from '@nestjs/schedule';
+import { CronJob } from 'cron';
 import * as yaml from 'js-yaml';
 
 import { MarketDataService } from '@/market-data/market-data.service';
@@ -34,7 +35,7 @@ interface CachedConfig {
 }
 
 @Injectable()
-export class FileSyncService implements OnModuleInit {
+export class FileSyncService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(FileSyncService.name);
   private cachedConfig: CachedConfig | null = null;
 
@@ -42,11 +43,21 @@ export class FileSyncService implements OnModuleInit {
     private readonly configService: ConfigService,
     private readonly ynabService: YnabService,
     private readonly marketDataService: MarketDataService,
+    private readonly schedulerRegistry: SchedulerRegistry,
   ) {}
 
   async onModuleInit() {
     // Fetch initial config on startup
     await this.fetchAndCacheConfig();
+  }
+
+  onModuleDestroy() {
+    // Clean up any dynamic cron jobs when the module is destroyed
+    try {
+      this.schedulerRegistry.deleteCronJob('custom-ynab-sync');
+    } catch {
+      // Job doesn't exist, which is fine
+    }
   }
 
   @Cron(CronExpression.EVERY_DAY_AT_8PM, {
@@ -63,15 +74,23 @@ export class FileSyncService implements OnModuleInit {
   }
 
   @Cron(CronExpression.EVERY_DAY_AT_8PM, {
-    name: 'weekly-ynab-sync',
+    name: 'fallback-ynab-sync',
     timeZone: 'UTC',
-  }) // Weekly on Sunday at 8 PM UTC
+  })
   async handleWeeklyYnabSync(): Promise<void> {
     try {
-      this.logger.log('Weekly YNAB sync check triggered');
-      await this.handleScheduledYnabSync();
+      // Only run if no custom schedule is configured
+      if (
+        !this.cachedConfig?.config?.schedule?.sync_time ||
+        !this.cachedConfig?.config?.schedule?.sync_frequency
+      ) {
+        this.logger.log('Fallback YNAB sync triggered (no custom schedule configured)');
+        await this.handleScheduledYnabSync();
+      } else {
+        this.logger.debug('Skipping fallback sync - custom schedule is active');
+      }
     } catch (error) {
-      this.logger.error('Error during weekly YNAB sync', error);
+      this.logger.error('Error during fallback YNAB sync', error);
     }
   }
 
@@ -194,6 +213,13 @@ export class FileSyncService implements OnModuleInit {
 
   private setupYnabSyncSchedule(config: YamlConfig): void {
     try {
+      // Remove any existing dynamic cron job
+      try {
+        this.schedulerRegistry.deleteCronJob('custom-ynab-sync');
+      } catch {
+        // Job doesn't exist yet, which is fine
+      }
+
       // Log the YNAB sync configuration
       let customCron;
       const timezone = config.schedule?.timezone || 'UTC';
@@ -207,6 +233,24 @@ export class FileSyncService implements OnModuleInit {
 
       if (customCron) {
         if (this.isValidSyncCron(customCron)) {
+          // Create a new dynamic cron job with the specified timezone
+          const job = new CronJob(
+            customCron,
+            async () => {
+              try {
+                await this.handleScheduledYnabSync();
+              } catch (error) {
+                this.logger.error('Error in custom scheduled YNAB sync', error);
+              }
+            },
+            null, // onComplete
+            false, // start
+            timezone, // timezone
+          );
+
+          this.schedulerRegistry.addCronJob('custom-ynab-sync', job);
+          job.start();
+
           if (config.schedule?.sync_time && config.schedule?.sync_frequency) {
             this.logger.log(
               `Custom YNAB sync schedule configured: ${config.schedule.sync_frequency} at ${config.schedule.sync_time} (converted to: ${customCron}, timezone: ${timezone})`,
@@ -216,7 +260,9 @@ export class FileSyncService implements OnModuleInit {
               `Custom YNAB sync schedule configured: ${customCron} (timezone: ${timezone})`,
             );
           }
-          this.logger.log('Note: Custom scheduling will be checked by the weekly sync job');
+          this.logger.log(
+            'Custom scheduling is now active and will respect the configured timezone',
+          );
         } else {
           this.logger.warn(
             'Custom sync schedule allows too frequent execution, using default weekly schedule',

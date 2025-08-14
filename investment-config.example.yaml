@@ -8,8 +8,9 @@ budget: 'your-ynab-budget-id'
 
 # Optional: Custom sync schedule (if not specified, defaults to weekly on Sunday at 8 PM UTC)
 schedule:
-  sync_time: 8pm # Time to sync investments (in your local timezone)
+  sync_time: 8pm # Time to sync investments
   sync_frequency: daily # How often to sync investments (daily, weekly, monthly)
+  timezone: Europe/Prague # Timezone for the sync_time (e.g., America/New_York, Europe/Prague, Asia/Tokyo, UTC)
 
 # List your investment accounts below
 accounts:
