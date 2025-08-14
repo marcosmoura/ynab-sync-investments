@@ -107,7 +107,7 @@ budget: your_ynab_budget_id
 
 # Optional: Custom sync schedule
 schedule:
-  sync_time: 9pm # Time to sync investments (9pm, 21:00, etc.)
+  sync_time: 8pm # Time to sync investments (8pm, 21:00, etc.)
   sync_frequency: weekly # How often to sync (daily, weekly, monthly)
 
 accounts:
@@ -159,7 +159,7 @@ Configure automatic syncing in your investment config file:
 
 ```yaml
 schedule:
-  sync_time: '9pm' # Time to sync (9pm, 21:00, etc.)
+  sync_time: '8pm' # Time to sync (8pm, 21:00, etc.)
   sync_frequency: 'weekly' # How often to sync (daily, weekly, monthly)
 ```
 

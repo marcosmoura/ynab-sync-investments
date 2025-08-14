@@ -67,7 +67,7 @@ describe('FileSyncService', () => {
       const yamlContent = `
 budget: test-budget-id
 schedule:
-  sync_time: "9pm"
+  sync_time: "8pm"
   sync_frequency: daily
 accounts:
   - account_id: account-1

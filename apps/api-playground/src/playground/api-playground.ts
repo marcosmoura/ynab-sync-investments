@@ -41,7 +41,7 @@ export class ApiPlayground {
 
     console.log('\n🎉 YNAB Investments Sync Playground completed successfully!');
     console.log('\n💡 The app will automatically:');
-    console.log('   • Fetch the investment config file daily at 9 PM');
+    console.log('   • Fetch the investment config file daily at 8 PM');
     console.log('   • Sync with YNAB when the config changes or on the configured schedule');
     console.log('   • Use real-time market data to calculate portfolio values');
   }

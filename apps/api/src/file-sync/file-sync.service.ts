@@ -15,7 +15,7 @@ type CashData = {
 interface YamlConfig {
   budget: string;
   schedule?: {
-    sync_time?: string; // Time to sync (e.g., "9pm", "21:00")
+    sync_time?: string; // Time to sync (e.g., "8pm", "21:00")
     sync_frequency?: 'daily' | 'weekly' | 'monthly'; // How often to sync
     timezone?: string;
   };
@@ -49,7 +49,7 @@ export class FileSyncService implements OnModuleInit {
     await this.fetchAndCacheConfig();
   }
 
-  @Cron(CronExpression.EVERY_DAY_AT_9PM, {
+  @Cron(CronExpression.EVERY_DAY_AT_8PM, {
     name: 'daily-config-fetch',
     timeZone: 'UTC',
   })
@@ -62,10 +62,10 @@ export class FileSyncService implements OnModuleInit {
     }
   }
 
-  @Cron(CronExpression.EVERY_DAY_AT_9PM, {
+  @Cron(CronExpression.EVERY_DAY_AT_8PM, {
     name: 'weekly-ynab-sync',
     timeZone: 'UTC',
-  }) // Weekly on Sunday at 9 PM UTC
+  }) // Weekly on Sunday at 8 PM UTC
   async handleWeeklyYnabSync(): Promise<void> {
     try {
       this.logger.log('Weekly YNAB sync check triggered');
@@ -223,7 +223,7 @@ export class FileSyncService implements OnModuleInit {
           );
         }
       } else {
-        this.logger.log('Using default weekly YNAB sync schedule (Sunday 9 PM UTC)');
+        this.logger.log('Using default weekly YNAB sync schedule (Sunday 8 PM UTC)');
       }
     } catch (error) {
       this.logger.error('Error setting up YNAB sync schedule', error);
@@ -405,7 +405,7 @@ export class FileSyncService implements OnModuleInit {
   }
 
   private convertScheduleToCron(syncTime: string, syncFrequency: string): string {
-    // Parse time (supports formats like "9pm", "21:00", "9:00 PM", etc.)
+    // Parse time (supports formats like "8pm", "21:00", "9:00 PM", etc.)
     const hour = this.parseTimeToHour(syncTime);
 
     switch (syncFrequency.toLowerCase()) {
@@ -424,7 +424,7 @@ export class FileSyncService implements OnModuleInit {
   private parseTimeToHour(timeStr: string): number {
     const cleanTime = timeStr.toLowerCase().trim();
 
-    // Handle formats like "9pm", "9 pm"
+    // Handle formats like "8pm", "8 pm"
     if (cleanTime.includes('pm')) {
       const hourStr = cleanTime.replace(/pm/g, '').trim();
       const hour = parseInt(hourStr, 10);
@@ -447,7 +447,7 @@ export class FileSyncService implements OnModuleInit {
     // Handle simple hour format like "21"
     const hour = parseInt(cleanTime, 10);
     if (isNaN(hour) || hour < 0 || hour > 23) {
-      this.logger.warn(`Invalid time format: ${timeStr}, defaulting to 21 (9 PM)`);
+      this.logger.warn(`Invalid time format: ${timeStr}, defaulting to 21 (8 PM)`);
       return 21;
     }
 
