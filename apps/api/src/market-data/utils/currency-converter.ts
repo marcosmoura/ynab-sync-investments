@@ -2,6 +2,11 @@ import { Logger } from '@nestjs/common';
 
 import { fetchWithTimeout } from './fetch-with-timeout';
 
+// Simple in-memory cache for conversion rates per fromCurrency
+const conversionRateCache: Record<string, { rates: Record<string, number>; timestamp: number }> =
+  {};
+const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
 /**
  * Converts an amount from one currency to another using exchangerate-api.com
  * @param amount - The amount to convert
@@ -17,41 +22,68 @@ export async function convertCurrency(
   toCurrency: string,
   timeout = 10000,
 ): Promise<number> {
-  if (fromCurrency.toUpperCase() === toCurrency.toUpperCase()) {
+  const from = fromCurrency.toUpperCase();
+  const to = toCurrency.toUpperCase();
+
+  if (from === to) {
     return amount;
   }
 
   const logger = new Logger('Utils: currencyConverter');
+  const cacheKey = from;
+  const now = Date.now();
+
+  // Check cache for rates
+  const cached = conversionRateCache[cacheKey];
+  if (cached && now - cached.timestamp < CACHE_TTL_MS) {
+    const cachedRate = cached.rates[to];
+
+    if (cachedRate) {
+      const convertedAmount = amount * cachedRate;
+
+      logger.log(
+        `[CACHE] Converted ${amount} ${from} to ${convertedAmount} ${to} (rate: ${cachedRate})`,
+      );
+      return convertedAmount;
+    }
+  }
 
   try {
     // Using exchangerate-api.com free tier (1500 requests/month)
-    const url = `https://api.exchangerate-api.com/v4/latest/${fromCurrency.toUpperCase()}`;
+    const url = `https://api.exchangerate-api.com/v4/latest/${from.toUpperCase()}`;
+    const request = await fetchWithTimeout(url, timeout);
 
-    const response = await fetchWithTimeout(url, timeout);
+    if (!request.ok) {
+      if (request.status === 404) {
+        throw new Error(`Currency not found: ${from} to ${to} - ${url}`);
+      }
 
-    if (!response.ok) {
-      throw new Error(`Currency API error: ${response.status} ${response.statusText}`);
+      throw new Error(`Currency API error: ${request.status} ${request.statusText}`);
     }
 
-    const data = await response.json();
+    const data = await request.json();
 
-    if (!data.rates || !data.rates[toCurrency.toUpperCase()]) {
-      throw new Error(`Exchange rate not found for ${fromCurrency} to ${toCurrency}`);
+    if (!data.rates || !data.rates[to.toUpperCase()]) {
+      throw new Error(`Exchange rate not found for ${from} to ${to}`);
     }
 
-    const exchangeRate = data.rates[toCurrency.toUpperCase()];
+    // Cache all rates for this from
+    conversionRateCache[cacheKey] = {
+      rates: data.rates,
+      timestamp: now,
+    };
+
+    const exchangeRate = data.rates[to.toUpperCase()];
     const convertedAmount = amount * exchangeRate;
 
-    logger.log(
-      `Converted ${amount} ${fromCurrency} to ${convertedAmount} ${toCurrency} (rate: ${exchangeRate})`,
-    );
+    logger.log(`Converted ${amount} ${from} to ${convertedAmount} ${to} (rate: ${exchangeRate})`);
 
     return convertedAmount;
   } catch (error) {
-    logger.error(`Failed to convert ${amount} from ${fromCurrency} to ${toCurrency}`, error);
-
+    logger.error(`Failed to convert ${amount} from ${from} to ${to}`, error);
     // Fallback: return original amount with warning
     logger.warn(`Currency conversion failed, returning original amount`);
+
     return amount;
   }
 }
