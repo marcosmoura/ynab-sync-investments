@@ -1,17 +1,47 @@
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
-import { describe, it, afterAll, expect, beforeAll } from 'vitest';
+import { describe, it, afterAll, expect, beforeAll, beforeEach, vi } from 'vitest';
+
+import { FileSyncService } from '@/file-sync/file-sync.service';
+import { MarketDataService } from '@/market-data/market-data.service';
+import { YnabService } from '@/ynab/ynab.service';
 
 import { AppModule } from './app.module';
 
 describe('AppController (e2e)', () => {
   let app: INestApplication;
 
+  // Mock services to avoid external API calls
+  const mockFileSyncService = {
+    triggerManualFileSync: vi.fn().mockResolvedValue(undefined),
+    fetchAndCacheConfig: vi.fn().mockResolvedValue(undefined),
+    handleScheduledConfigFetch: vi.fn().mockResolvedValue(undefined),
+    handleWeeklyYnabSync: vi.fn().mockResolvedValue(undefined),
+  };
+
+  const mockMarketDataService = {
+    getPrice: vi.fn().mockResolvedValue({ price: 100, currency: 'USD' }),
+    getSupportedSymbols: vi.fn().mockResolvedValue(['AAPL', 'GOOGL']),
+  };
+
+  const mockYnabService = {
+    updateAccountBalance: vi.fn().mockResolvedValue(undefined),
+    getAccounts: vi.fn().mockResolvedValue([]),
+    getBudgets: vi.fn().mockResolvedValue([]),
+  };
+
   beforeAll(async () => {
     const moduleFixture = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideProvider(FileSyncService)
+      .useValue(mockFileSyncService)
+      .overrideProvider(MarketDataService)
+      .useValue(mockMarketDataService)
+      .overrideProvider(YnabService)
+      .useValue(mockYnabService)
+      .compile();
 
     app = moduleFixture.createNestApplication({
       logger: false, // Disable NestJS logging for tests
@@ -20,8 +50,15 @@ describe('AppController (e2e)', () => {
     await app.init();
   });
 
+  beforeEach(() => {
+    // Reset mock call counts before each test
+    vi.clearAllMocks();
+  });
+
   afterAll(async () => {
     await app.close();
+    // Clear all mocks after tests
+    vi.clearAllMocks();
   });
 
   describe('Valid endpoints', () => {
@@ -46,6 +83,8 @@ describe('AppController (e2e)', () => {
         .expect((res) => {
           expect(res.body).toHaveProperty('message');
           expect(res.body.message).toBe('File sync completed successfully');
+          // Verify that the mocked service was called
+          expect(mockFileSyncService.triggerManualFileSync).toHaveBeenCalledTimes(1);
         });
     });
   });
