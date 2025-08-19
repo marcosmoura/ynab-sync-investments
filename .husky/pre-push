@@ -1,4 +1,4 @@
 export NODE_OPTIONS="--experimental-strip-types"
 
-pnpm exec lint-staged --config lint-staged.config.ts
-pnpm exec nx run-many -t typecheck,build,test
+pnpm lint
+pnpm nx run-many -t typecheck,build,test
