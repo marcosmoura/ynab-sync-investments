@@ -1,6 +1,10 @@
 packages:
   - apps/*
 
+hoist: false
+
+nodeLinker: hoisted
+
 onlyBuiltDependencies:
   - '@nestjs/core'
   - '@parcel/watcher'
@@ -8,8 +12,6 @@ onlyBuiltDependencies:
   - '@swc/core'
   - esbuild
   - nx
+  - oxc-resolver
   - unrs-resolver
   - vue-demi
-
-hoist: false
-nodeLinker: 'hoisted'

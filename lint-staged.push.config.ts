@@ -1,0 +1,4 @@
+export default {
+  '*.{js,ts,json,css,md,yaml}': ['prettier --write', 'oxlint --fix', 'eslint --fix'],
+  '*.ts': ['pnpm nx run-many -t typecheck,build,test'],
+};

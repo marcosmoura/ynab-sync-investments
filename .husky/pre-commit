@@ -1,1 +1,3 @@
-pnpm lint-staged
+export NODE_OPTIONS="--experimental-strip-types"
+
+pnpm lint-staged --config lint-staged.commit.config.ts
