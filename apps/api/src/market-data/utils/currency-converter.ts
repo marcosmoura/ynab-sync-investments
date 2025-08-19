@@ -2,9 +2,13 @@ import { Logger } from '@nestjs/common';
 
 import { fetchWithTimeout } from './fetch-with-timeout';
 
+type ConversionRateCacheEntry = {
+  rates: Record<string, number>;
+  timestamp: number;
+};
+
 // Simple in-memory cache for conversion rates per fromCurrency
-const conversionRateCache: Record<string, { rates: Record<string, number>; timestamp: number }> =
-  {};
+const conversionRateCache: Record<string, ConversionRateCacheEntry> = {};
 const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
 /**
@@ -32,9 +36,8 @@ export async function convertCurrency(
   const logger = new Logger('Utils: currencyConverter');
   const cacheKey = from;
   const now = Date.now();
+  const cached: ConversionRateCacheEntry = conversionRateCache[cacheKey];
 
-  // Check cache for rates
-  const cached = conversionRateCache[cacheKey];
   if (cached && now - cached.timestamp < CACHE_TTL_MS) {
     const cachedRate = cached.rates[to];
 
