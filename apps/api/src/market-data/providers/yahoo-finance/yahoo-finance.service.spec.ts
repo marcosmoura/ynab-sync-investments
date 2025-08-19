@@ -81,18 +81,12 @@ describe('YahooFinanceService', () => {
       expect(result).toEqual([]);
     });
 
-    it('should handle API errors and return zero price', async () => {
+    it('should handle API errors and return empty array', async () => {
       mockYahooFinance.quote.mockRejectedValueOnce(new Error('Yahoo Finance error'));
 
       const result = await service.fetchAssetPrices(['ERROR_SYMBOL'], 'USD');
 
-      expect(result).toEqual([
-        {
-          symbol: 'ERROR_SYMBOL',
-          price: 0,
-          currency: 'USD',
-        },
-      ]);
+      expect(result).toEqual([]);
     });
 
     it('should handle missing price in quote', async () => {
