@@ -59,13 +59,10 @@ export class YahooFinanceService implements MarketDataProvider {
 
         this.logger.error(`YahooFinance error for symbol ${symbol}: ${errorMsg}`);
 
-        results.push({
-          symbol,
-          price: 0,
-          currency: targetCurrency,
-        });
+        continue;
       }
     }
+
     return results;
   }
 }
