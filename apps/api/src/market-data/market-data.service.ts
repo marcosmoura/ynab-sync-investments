@@ -38,10 +38,9 @@ export class MarketDataService {
     });
 
     this.logger.log(
-      `Initialized MarketDataService with ${this.providers.length} available providers: [${this.providers
-        .map((p) => p.getProviderName())
-        .join(', ')}]`,
+      `Initialized MarketDataService with ${this.providers.length} available providers:`,
     );
+    this.logger.log(`[${this.providers.map((p) => p.getProviderName()).join(', ')}]`);
   }
 
   async getAssetPrices(

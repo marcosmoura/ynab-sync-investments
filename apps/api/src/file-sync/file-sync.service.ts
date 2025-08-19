@@ -103,7 +103,8 @@ export class FileSyncService implements OnModuleInit, OnModuleDestroy {
         return;
       }
 
-      this.logger.log(`Fetching config from URL: ${configFileUrl}`);
+      this.logger.log(`Fetching config from URL:`);
+      this.logger.log(configFileUrl);
 
       const fileContent = await this.fetchConfigFile(configFileUrl);
       if (!fileContent) {
@@ -251,15 +252,16 @@ export class FileSyncService implements OnModuleInit, OnModuleDestroy {
           this.schedulerRegistry.addCronJob('custom-ynab-sync', job);
           job.start();
 
+          this.logger.log(`Custom YNAB sync schedule configured:`);
+
           if (config.schedule?.sync_time && config.schedule?.sync_frequency) {
             this.logger.log(
-              `Custom YNAB sync schedule configured: ${config.schedule.sync_frequency} at ${config.schedule.sync_time} (converted to: ${customCron}, timezone: ${timezone})`,
+              `${config.schedule.sync_frequency} at ${config.schedule.sync_time} (converted to: ${customCron}, timezone: ${timezone})`,
             );
           } else {
-            this.logger.log(
-              `Custom YNAB sync schedule configured: ${customCron} (timezone: ${timezone})`,
-            );
+            this.logger.log(`${customCron} (timezone: ${timezone})`);
           }
+
           this.logger.log(
             'Custom scheduling is now active and will respect the configured timezone',
           );
