@@ -48,7 +48,16 @@ export class FileSyncService implements OnModuleInit, OnModuleDestroy {
 
   async onModuleInit() {
     // Fetch initial config on startup
-    await this.fetchAndCacheConfig();
+    const cached = await this.fetchAndCacheConfig();
+
+    if (!cached) {
+      this.logger.warn('No valid config found during initialization');
+      // Still set up fallback schedule even if no config is available initially
+      this.setupYnabSyncSchedule(null);
+      return;
+    }
+
+    this.logger.log('Module initialized successfully with config');
   }
 
   onModuleDestroy() {
@@ -94,7 +103,7 @@ export class FileSyncService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  async fetchAndCacheConfig(): Promise<void> {
+  async fetchAndCacheConfig(): Promise<CachedConfig | null> {
     try {
       const configFileUrl = this.configService.get<string>('INVESTMENTS_CONFIG_FILE_URL');
 
@@ -132,23 +141,23 @@ export class FileSyncService implements OnModuleInit, OnModuleDestroy {
         `Config cached successfully. First fetch: ${isFirstFetch}, Changed: ${hasChanged}`,
       );
 
-      // Setup or update the YNAB sync schedule
-      this.setupYnabSyncSchedule(config);
-
-      // Trigger YNAB sync if it's the first fetch or if the config changed
+      // Update schedule if config changed or is first fetch
       if (isFirstFetch || hasChanged) {
-        // Only fetch initial config on startup in production
+        this.logger.log('Updating YNAB sync schedule due to config change');
+        this.setupYnabSyncSchedule(config);
+
+        // Only trigger sync on startup in production
         const nodeEnv = this.configService.get<string>('NODE_ENV', 'development');
 
         if (nodeEnv === 'production') {
           this.logger.log('Triggering YNAB sync due to config change or first fetch');
           await this.performYnabSync();
-
-          await this.fetchAndCacheConfig();
         } else {
           this.logger.log('Development mode: Skipping automatic config fetch on startup');
         }
       }
+
+      return this.cachedConfig;
     } catch (error) {
       this.logger.error('Error fetching and caching config', error);
       throw error;
@@ -212,13 +221,22 @@ export class FileSyncService implements OnModuleInit, OnModuleDestroy {
     return hash.toString();
   }
 
-  private setupYnabSyncSchedule(config: YamlConfig): void {
+  private setupYnabSyncSchedule(config: YamlConfig | null): void {
     try {
       // Remove any existing dynamic cron job
       try {
         this.schedulerRegistry.deleteCronJob('custom-ynab-sync');
+        this.logger.debug('Removed existing custom-ynab-sync job');
       } catch {
         // Job doesn't exist yet, which is fine
+      }
+
+      // If no config is provided, just cleanup and rely on fallback schedule
+      if (!config) {
+        this.logger.log(
+          'No config available, using fallback weekly YNAB sync schedule (Sunday 8 PM UTC)',
+        );
+        return;
       }
 
       // Log the YNAB sync configuration
@@ -239,6 +257,7 @@ export class FileSyncService implements OnModuleInit, OnModuleDestroy {
             customCron,
             async () => {
               try {
+                this.logger.log('Custom scheduled YNAB sync triggered');
                 await this.handleScheduledYnabSync();
               } catch (error) {
                 this.logger.error('Error in custom scheduled YNAB sync', error);
@@ -252,11 +271,11 @@ export class FileSyncService implements OnModuleInit, OnModuleDestroy {
           this.schedulerRegistry.addCronJob('custom-ynab-sync', job);
           job.start();
 
-          this.logger.log(`Custom YNAB sync schedule configured:`);
+          this.logger.log(`Custom YNAB sync schedule configured successfully:`);
 
           if (config.schedule?.sync_time && config.schedule?.sync_frequency) {
             this.logger.log(
-              `${config.schedule.sync_frequency} at ${config.schedule.sync_time} (converted to: ${customCron}, timezone: ${timezone})`,
+              `${config.schedule.sync_frequency} at ${config.schedule.sync_time} (cron: ${customCron}, timezone: ${timezone})`,
             );
           } else {
             this.logger.log(`${customCron} (timezone: ${timezone})`);
@@ -271,7 +290,9 @@ export class FileSyncService implements OnModuleInit, OnModuleDestroy {
           );
         }
       } else {
-        this.logger.log('Using default weekly YNAB sync schedule (Sunday 8 PM UTC)');
+        this.logger.log(
+          'No custom schedule configured, using default weekly YNAB sync schedule (Sunday 8 PM UTC)',
+        );
       }
     } catch (error) {
       this.logger.error('Error setting up YNAB sync schedule', error);
@@ -280,11 +301,16 @@ export class FileSyncService implements OnModuleInit, OnModuleDestroy {
 
   private isValidSyncCron(cronExpression: string): boolean {
     try {
+      this.logger.debug(`Validating cron expression: ${cronExpression}`);
+
       // Basic validation for cron expression format
       const parts = cronExpression.split(' ');
 
       // A cron expression should have 5 or 6 parts
       if (parts.length < 5 || parts.length > 6) {
+        this.logger.warn(
+          `Invalid cron expression format: ${cronExpression} (expected 5 or 6 parts, got ${parts.length})`,
+        );
         return false;
       }
 
@@ -303,6 +329,7 @@ export class FileSyncService implements OnModuleInit, OnModuleDestroy {
         return false;
       }
 
+      this.logger.debug(`Cron expression ${cronExpression} is valid`);
       return true;
     } catch (error) {
       this.logger.warn(`Invalid cron expression: ${cronExpression}`, error);
@@ -315,20 +342,6 @@ export class FileSyncService implements OnModuleInit, OnModuleDestroy {
       if (!this.cachedConfig) {
         this.logger.warn('No cached config available for scheduled YNAB sync');
         return;
-      }
-
-      const now = new Date();
-      const lastSync = this.cachedConfig.lastSyncAt;
-
-      // Ensure minimum 24-hour gap between syncs
-      if (lastSync) {
-        const hoursSinceLastSync = (now.getTime() - lastSync.getTime()) / (1000 * 60 * 60);
-        if (hoursSinceLastSync < 24) {
-          this.logger.log(
-            `Skipping YNAB sync - last sync was ${hoursSinceLastSync.toFixed(1)} hours ago`,
-          );
-          return;
-        }
       }
 
       this.logger.log('Scheduled YNAB sync triggered');
@@ -455,41 +468,61 @@ export class FileSyncService implements OnModuleInit, OnModuleDestroy {
   private convertScheduleToCron(syncTime: string, syncFrequency: string): string {
     // Parse time (supports formats like "8pm", "21:00", "9:00 PM", etc.)
     const hour = this.parseTimeToHour(syncTime);
+    this.logger.debug(`Converting schedule: ${syncFrequency} at ${syncTime} -> hour: ${hour}`);
 
     switch (syncFrequency.toLowerCase()) {
-      case 'daily':
-        return `0 ${hour} * * *`; // Every day at specified hour
-      case 'weekly':
-        return `0 ${hour} * * 0`; // Every Sunday at specified hour
-      case 'monthly':
-        return `0 ${hour} 1 * *`; // First day of every month at specified hour
-      default:
+      case 'daily': {
+        const dailyCron = `0 ${hour} * * *`; // Every day at specified hour
+        this.logger.debug(`Daily schedule converted to: ${dailyCron}`);
+        return dailyCron;
+      }
+      case 'weekly': {
+        const weeklyCron = `0 ${hour} * * 0`; // Every Sunday at specified hour
+        this.logger.debug(`Weekly schedule converted to: ${weeklyCron}`);
+        return weeklyCron;
+      }
+      case 'monthly': {
+        const monthlyCron = `0 ${hour} 1 * *`; // First day of every month at specified hour
+        this.logger.debug(`Monthly schedule converted to: ${monthlyCron}`);
+        return monthlyCron;
+      }
+      default: {
         this.logger.warn(`Unknown sync frequency: ${syncFrequency}, defaulting to weekly`);
-        return `0 ${hour} * * 0`; // Default to weekly
+        const defaultCron = `0 ${hour} * * 0`; // Default to weekly
+        this.logger.debug(`Default schedule: ${defaultCron}`);
+        return defaultCron;
+      }
     }
   }
 
   private parseTimeToHour(timeStr: string): number {
     const cleanTime = timeStr.toLowerCase().trim();
+    this.logger.debug(`Parsing time: "${timeStr}" -> cleaned: "${cleanTime}"`);
 
     // Handle formats like "8pm", "8 pm"
     if (cleanTime.includes('pm')) {
       const hourStr = cleanTime.replace(/pm/g, '').trim();
       const hour = parseInt(hourStr, 10);
-      return hour === 12 ? 12 : hour + 12; // Convert PM to 24-hour format
+      const result = hour === 12 ? 12 : hour + 12; // Convert PM to 24-hour format
+      this.logger.debug(`PM time: "${hourStr}" -> ${result}`);
+      return result;
     }
 
     // Handle formats like "9am", "9 am"
     if (cleanTime.includes('am')) {
       const hourStr = cleanTime.replace(/am/g, '').trim();
       const hour = parseInt(hourStr, 10);
-      return hour === 12 ? 0 : hour; // Convert AM to 24-hour format
+      const result = hour === 12 ? 0 : hour; // Convert AM to 24-hour format
+      this.logger.debug(`AM time: "${hourStr}" -> ${result}`);
+      return result;
     }
 
     // Handle 24-hour format like "21:00", "21"
     if (cleanTime.includes(':')) {
       const [hourStr] = cleanTime.split(':');
-      return parseInt(hourStr, 10);
+      const result = parseInt(hourStr, 10);
+      this.logger.debug(`24-hour format with colon: "${hourStr}" -> ${result}`);
+      return result;
     }
 
     // Handle simple hour format like "21"
@@ -499,6 +532,7 @@ export class FileSyncService implements OnModuleInit, OnModuleDestroy {
       return 21;
     }
 
+    this.logger.debug(`Simple hour format: "${cleanTime}" -> ${hour}`);
     return hour;
   }
 }
