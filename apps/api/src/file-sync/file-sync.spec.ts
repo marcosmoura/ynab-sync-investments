@@ -176,7 +176,7 @@ accounts:
 
   describe('handleScheduledConfigFetch', () => {
     it('should call fetchAndCacheConfig', async () => {
-      const spy = vi.spyOn(service, 'fetchAndCacheConfig').mockResolvedValue();
+      const spy = vi.spyOn(service, 'fetchAndCacheConfig').mockResolvedValue(void 0);
 
       await service.handleScheduledConfigFetch();
 

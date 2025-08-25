@@ -39,6 +39,11 @@ export class FileSyncService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(FileSyncService.name);
   private cachedConfig: CachedConfig | null = null;
 
+  // Cron job identifiers
+  private static readonly DAILY_FETCH_JOB = 'daily-config-fetch';
+  private static readonly FALLBACK_SYNC_JOB = 'fallback-ynab-sync';
+  private static readonly CUSTOM_SYNC_JOB = 'custom-ynab-sync';
+
   constructor(
     private readonly configService: ConfigService,
     private readonly ynabService: YnabService,
@@ -70,7 +75,7 @@ export class FileSyncService implements OnModuleInit, OnModuleDestroy {
   }
 
   @Cron(CronExpression.EVERY_DAY_AT_8PM, {
-    name: 'daily-config-fetch',
+    name: FileSyncService.DAILY_FETCH_JOB,
     timeZone: 'UTC',
   })
   async handleScheduledConfigFetch(): Promise<void> {
@@ -83,16 +88,13 @@ export class FileSyncService implements OnModuleInit, OnModuleDestroy {
   }
 
   @Cron(CronExpression.EVERY_DAY_AT_8PM, {
-    name: 'fallback-ynab-sync',
+    name: FileSyncService.FALLBACK_SYNC_JOB,
     timeZone: 'UTC',
   })
   async handleWeeklyYnabSync(): Promise<void> {
     try {
       // Only run if no custom schedule is configured
-      if (
-        !this.cachedConfig?.config?.schedule?.sync_time ||
-        !this.cachedConfig?.config?.schedule?.sync_frequency
-      ) {
+      if (!this.hasCustomSchedule(this.cachedConfig?.config ?? null)) {
         this.logger.log('Fallback YNAB sync triggered (no custom schedule configured)');
         await this.handleScheduledYnabSync();
       } else {
@@ -109,20 +111,20 @@ export class FileSyncService implements OnModuleInit, OnModuleDestroy {
 
       if (!configFileUrl) {
         this.logger.warn('INVESTMENTS_CONFIG_FILE_URL not configured, skipping config fetch');
-        return;
+        return null;
       }
 
-      this.logger.log(`Fetching config from URL:`);
+      this.logger.log('Fetching config from URL:');
       this.logger.log(configFileUrl);
 
       const fileContent = await this.fetchConfigFile(configFileUrl);
       if (!fileContent) {
-        return;
+        return null;
       }
 
       const config = this.parseConfigFile(fileContent);
       if (!config) {
-        return;
+        return null;
       }
 
       const contentHash = this.generateHash(fileContent);
@@ -166,7 +168,7 @@ export class FileSyncService implements OnModuleInit, OnModuleDestroy {
 
   private async fetchConfigFile(configFileUrl: string): Promise<string | null> {
     try {
-      const cacheBustUrl = `${configFileUrl}${configFileUrl.includes('?') ? '&' : '?'}_t=${Date.now()}`;
+      const cacheBustUrl = this.buildCacheBustUrl(configFileUrl);
 
       const response = await fetch(cacheBustUrl, {
         cache: 'no-store',
@@ -187,6 +189,11 @@ export class FileSyncService implements OnModuleInit, OnModuleDestroy {
       this.logger.warn(`Config file could not be fetched: ${error.message}`);
       return null;
     }
+  }
+
+  private buildCacheBustUrl(url: string): string {
+    const separator = url.includes('?') ? '&' : '?';
+    return `${url}${separator}_t=${Date.now()}`;
   }
 
   private parseConfigFile(fileContent: string): YamlConfig | null {
@@ -224,12 +231,7 @@ export class FileSyncService implements OnModuleInit, OnModuleDestroy {
   private setupYnabSyncSchedule(config: YamlConfig | null): void {
     try {
       // Remove any existing dynamic cron job
-      try {
-        this.schedulerRegistry.deleteCronJob('custom-ynab-sync');
-        this.logger.debug('Removed existing custom-ynab-sync job');
-      } catch {
-        // Job doesn't exist yet, which is fine
-      }
+      this.safeDeleteCronJob(FileSyncService.CUSTOM_SYNC_JOB);
 
       // If no config is provided, just cleanup and rely on fallback schedule
       if (!config) {
@@ -240,35 +242,32 @@ export class FileSyncService implements OnModuleInit, OnModuleDestroy {
       }
 
       // Log the YNAB sync configuration
-      let customCron;
       const timezone = config.schedule?.timezone || 'UTC';
+      let customCron: string | null = null;
 
-      if (config.schedule?.sync_time && config.schedule?.sync_frequency) {
-        customCron = this.convertScheduleToCron(
-          config.schedule.sync_time,
-          config.schedule.sync_frequency,
-        );
+      if (this.hasCustomSchedule(config)) {
+        const schedule = config.schedule;
+        const syncTime = schedule?.sync_time;
+        const syncFrequency = schedule?.sync_frequency;
+
+        if (syncTime && syncFrequency) {
+          customCron = this.convertScheduleToCron(syncTime, syncFrequency);
+        }
       }
 
       if (customCron) {
         if (this.isValidSyncCron(customCron)) {
           // Create a new dynamic cron job with the specified timezone
-          const job = new CronJob(
-            customCron,
-            async () => {
-              try {
-                this.logger.log('Custom scheduled YNAB sync triggered');
-                await this.handleScheduledYnabSync();
-              } catch (error) {
-                this.logger.error('Error in custom scheduled YNAB sync', error);
-              }
-            },
-            null, // onComplete
-            false, // start
-            timezone, // timezone
-          );
+          const job = this.createCronJob(customCron, timezone, async () => {
+            try {
+              this.logger.log('Custom scheduled YNAB sync triggered');
+              await this.handleScheduledYnabSync();
+            } catch (error) {
+              this.logger.error('Error in custom scheduled YNAB sync', error);
+            }
+          });
 
-          this.schedulerRegistry.addCronJob('custom-ynab-sync', job);
+          this.schedulerRegistry.addCronJob(FileSyncService.CUSTOM_SYNC_JOB, job);
           job.start();
 
           this.logger.log(`Custom YNAB sync schedule configured successfully:`);
@@ -296,6 +295,19 @@ export class FileSyncService implements OnModuleInit, OnModuleDestroy {
       }
     } catch (error) {
       this.logger.error('Error setting up YNAB sync schedule', error);
+    }
+  }
+
+  private createCronJob(expression: string, timezone: string, onTick: () => void | Promise<void>) {
+    return new CronJob(expression, onTick, null, false, timezone);
+  }
+
+  private safeDeleteCronJob(name: string) {
+    try {
+      this.schedulerRegistry.deleteCronJob(name);
+      this.logger.debug(`Removed existing ${name} job`);
+    } catch {
+      // Job doesn't exist; ignore
     }
   }
 
@@ -380,11 +392,7 @@ export class FileSyncService implements OnModuleInit, OnModuleDestroy {
       }
 
       const { config } = this.cachedConfig;
-      const ynabToken = this.configService.get<string>('YNAB_API_KEY');
-
-      if (!ynabToken) {
-        throw new Error('YNAB_API_KEY not configured');
-      }
+      const ynabToken = this.getYnabTokenOrThrow();
 
       this.logger.log(`Starting YNAB sync for budget: ${config.budget}`);
       this.logger.log(`Processing ${config.accounts.length} accounts`);
@@ -450,6 +458,16 @@ export class FileSyncService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  private getYnabTokenOrThrow(): string {
+    const ynabToken = this.configService.get<string>('YNAB_API_KEY');
+
+    if (!ynabToken) {
+      throw new Error('YNAB_API_KEY not configured');
+    }
+
+    return ynabToken;
+  }
+
   async triggerManualFileSync(): Promise<void> {
     this.logger.log('Manual file sync triggered - fetching fresh config and performing sync');
 
@@ -499,40 +517,48 @@ export class FileSyncService implements OnModuleInit, OnModuleDestroy {
     const cleanTime = timeStr.toLowerCase().trim();
     this.logger.debug(`Parsing time: "${timeStr}" -> cleaned: "${cleanTime}"`);
 
-    // Handle formats like "8pm", "8 pm"
-    if (cleanTime.includes('pm')) {
-      const hourStr = cleanTime.replace(/pm/g, '').trim();
-      const hour = parseInt(hourStr, 10);
-      const result = hour === 12 ? 12 : hour + 12; // Convert PM to 24-hour format
-      this.logger.debug(`PM time: "${hourStr}" -> ${result}`);
+    // 12-hour format like "8pm", "8 pm", "9 am"
+    const twelveHourMatch = cleanTime.match(/^\s*(\d{1,2})\s*(:\d{2})?\s*(am|pm)\s*$/i);
+
+    if (twelveHourMatch) {
+      const hourRaw = parseInt(twelveHourMatch[1] ?? '0', 10);
+      const meridiem = (twelveHourMatch[3] ?? 'am').toLowerCase() as 'am' | 'pm';
+      const result = meridiem === 'pm' ? (hourRaw % 12) + 12 : hourRaw % 12;
+
+      this.logger.debug(`12-hour format: ${hourRaw}${meridiem} -> ${result}`);
+
       return result;
     }
 
-    // Handle formats like "9am", "9 am"
-    if (cleanTime.includes('am')) {
-      const hourStr = cleanTime.replace(/am/g, '').trim();
-      const hour = parseInt(hourStr, 10);
-      const result = hour === 12 ? 0 : hour; // Convert AM to 24-hour format
-      this.logger.debug(`AM time: "${hourStr}" -> ${result}`);
+    // 24-hour format: "21:00", "21"
+    const twentyFourHourWithColon = cleanTime.match(/^\s*(\d{1,2}):\d{2}\s*$/);
+
+    if (twentyFourHourWithColon) {
+      const result = parseInt(twentyFourHourWithColon[1] ?? '0', 10);
+
+      this.logger.debug(`24-hour with colon -> ${result}`);
+
       return result;
     }
 
-    // Handle 24-hour format like "21:00", "21"
-    if (cleanTime.includes(':')) {
-      const [hourStr] = cleanTime.split(':');
-      const result = parseInt(hourStr, 10);
-      this.logger.debug(`24-hour format with colon: "${hourStr}" -> ${result}`);
-      return result;
+    const onlyHour = cleanTime.match(/^\s*(\d{1,2})\s*$/);
+
+    if (onlyHour) {
+      const result = parseInt(onlyHour[1] ?? '0', 10);
+
+      this.logger.debug(`Hour only -> ${result}`);
+
+      if (!Number.isNaN(result) && result >= 0 && result <= 23) {
+        return result;
+      }
     }
 
-    // Handle simple hour format like "21"
-    const hour = parseInt(cleanTime, 10);
-    if (isNaN(hour) || hour < 0 || hour > 23) {
-      this.logger.warn(`Invalid time format: ${timeStr}, defaulting to 21 (8 PM)`);
-      return 21;
-    }
+    this.logger.warn(`Invalid time format: ${timeStr}, defaulting to 21 (8 PM)`);
 
-    this.logger.debug(`Simple hour format: "${cleanTime}" -> ${hour}`);
-    return hour;
+    return 21;
+  }
+
+  private hasCustomSchedule(config: YamlConfig | null): boolean {
+    return !!config?.schedule?.sync_time && !!config?.schedule?.sync_frequency;
   }
 }
