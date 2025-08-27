@@ -258,14 +258,20 @@ export class FileSyncService implements OnModuleInit, OnModuleDestroy {
       if (customCron) {
         if (this.isValidSyncCron(customCron)) {
           // Create a new dynamic cron job with the specified timezone
-          const job = this.createCronJob(customCron, timezone, async () => {
-            try {
-              this.logger.log('Custom scheduled YNAB sync triggered');
-              await this.handleScheduledYnabSync();
-            } catch (error) {
-              this.logger.error('Error in custom scheduled YNAB sync', error);
-            }
-          });
+          const job = new CronJob(
+            customCron,
+            async () => {
+              try {
+                this.logger.log('Custom scheduled YNAB sync triggered');
+                await this.handleScheduledYnabSync();
+              } catch (error) {
+                this.logger.error('Error in custom scheduled YNAB sync', error);
+              }
+            },
+            null,
+            false,
+            timezone,
+          );
 
           this.schedulerRegistry.addCronJob(FileSyncService.CUSTOM_SYNC_JOB, job);
           job.start();
@@ -296,10 +302,6 @@ export class FileSyncService implements OnModuleInit, OnModuleDestroy {
     } catch (error) {
       this.logger.error('Error setting up YNAB sync schedule', error);
     }
-  }
-
-  private createCronJob(expression: string, timezone: string, onTick: () => void | Promise<void>) {
-    return new CronJob(expression, onTick, null, false, timezone);
   }
 
   private safeDeleteCronJob(name: string) {
