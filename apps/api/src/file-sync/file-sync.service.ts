@@ -43,6 +43,7 @@ export class FileSyncService implements OnModuleInit, OnModuleDestroy {
   private static readonly DAILY_FETCH_JOB = 'daily-config-fetch';
   private static readonly FALLBACK_SYNC_JOB = 'fallback-ynab-sync';
   private static readonly CUSTOM_SYNC_JOB = 'custom-ynab-sync';
+  private static readonly CRON_JOB_TIME = CronExpression.EVERY_DAY_AT_5PM;
 
   constructor(
     private readonly configService: ConfigService,
@@ -50,6 +51,13 @@ export class FileSyncService implements OnModuleInit, OnModuleDestroy {
     private readonly marketDataService: MarketDataService,
     private readonly schedulerRegistry: SchedulerRegistry,
   ) {}
+
+  private static getCronJobSettings(jobName: string) {
+    return {
+      name: jobName,
+      timeZone: 'UTC',
+    };
+  }
 
   async onModuleInit() {
     // Fetch initial config on startup
@@ -74,10 +82,10 @@ export class FileSyncService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  @Cron(CronExpression.EVERY_DAY_AT_8PM, {
-    name: FileSyncService.DAILY_FETCH_JOB,
-    timeZone: 'UTC',
-  })
+  @Cron(
+    FileSyncService.CRON_JOB_TIME,
+    FileSyncService.getCronJobSettings(FileSyncService.DAILY_FETCH_JOB),
+  )
   async handleScheduledConfigFetch(): Promise<void> {
     try {
       this.logger.log('Scheduled config fetch triggered');
@@ -87,10 +95,10 @@ export class FileSyncService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  @Cron(CronExpression.EVERY_DAY_AT_8PM, {
-    name: FileSyncService.FALLBACK_SYNC_JOB,
-    timeZone: 'UTC',
-  })
+  @Cron(
+    FileSyncService.CRON_JOB_TIME,
+    FileSyncService.getCronJobSettings(FileSyncService.FALLBACK_SYNC_JOB),
+  )
   async handleWeeklyYnabSync(): Promise<void> {
     try {
       // Only run if no custom schedule is configured
@@ -315,8 +323,6 @@ export class FileSyncService implements OnModuleInit, OnModuleDestroy {
 
   private isValidSyncCron(cronExpression: string): boolean {
     try {
-      this.logger.debug(`Validating cron expression: ${cronExpression}`);
-
       // Basic validation for cron expression format
       const parts = cronExpression.split(' ');
 
@@ -488,7 +494,6 @@ export class FileSyncService implements OnModuleInit, OnModuleDestroy {
   private convertScheduleToCron(syncTime: string, syncFrequency: string): string {
     // Parse time (supports formats like "8pm", "21:00", "9:00 PM", etc.)
     const hour = this.parseTimeToHour(syncTime);
-    this.logger.debug(`Converting schedule: ${syncFrequency} at ${syncTime} -> hour: ${hour}`);
 
     switch (syncFrequency.toLowerCase()) {
       case 'daily': {
@@ -517,7 +522,6 @@ export class FileSyncService implements OnModuleInit, OnModuleDestroy {
 
   private parseTimeToHour(timeStr: string): number {
     const cleanTime = timeStr.toLowerCase().trim();
-    this.logger.debug(`Parsing time: "${timeStr}" -> cleaned: "${cleanTime}"`);
 
     // 12-hour format like "8pm", "8 pm", "9 am"
     const twelveHourMatch = cleanTime.match(/^\s*(\d{1,2})\s*(:\d{2})?\s*(am|pm)\s*$/i);
