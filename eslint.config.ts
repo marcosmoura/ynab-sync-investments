@@ -1,6 +1,7 @@
+import markdown from '@eslint/markdown';
 import nx from '@nx/eslint-plugin';
+import { globalIgnores } from 'eslint/config';
 import importPlugin from 'eslint-plugin-import';
-import markdown from 'eslint-plugin-markdown';
 import oxlint from 'eslint-plugin-oxlint';
 
 export default [
@@ -8,9 +9,7 @@ export default [
   ...nx.configs['flat/typescript'],
   ...nx.configs['flat/javascript'],
   ...markdown.configs.recommended,
-  {
-    ignores: ['**/dist'],
-  },
+  globalIgnores(['dist', 'node_modules', '.github/instructions/nx.instructions.md']),
   {
     files: ['**/*.ts', '**/*.js'],
     rules: {
