@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import yahooFinance from 'yahoo-finance2';
+import YahooFinance from 'yahoo-finance2';
 
 import { convertCurrency } from '@/market-data/utils';
 
@@ -9,6 +9,7 @@ import { AssetResult, MarketDataProvider } from '../types';
 export class YahooFinanceService implements MarketDataProvider {
   private readonly logger = new Logger(YahooFinanceService.name);
   private readonly timeout = 10000;
+  private readonly yahooFinance = new YahooFinance({ suppressNotices: ['yahooSurvey'] });
 
   getProviderName(): string {
     return 'YahooFinance';
@@ -30,7 +31,7 @@ export class YahooFinanceService implements MarketDataProvider {
 
     for (const symbol of symbols) {
       try {
-        const quote = await yahooFinance.quote(symbol);
+        const quote = await this.yahooFinance.quote(symbol);
 
         if (!quote) {
           this.logger.warn(`No quote found for symbol: ${symbol}`);

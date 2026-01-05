@@ -1,16 +1,26 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { beforeEach, afterEach, describe, it, expect, vi } from 'vitest';
-import yahooFinance from 'yahoo-finance2';
+import { beforeEach, afterEach, describe, it, expect, vi, type Mock } from 'vitest';
 
 import { convertCurrency } from '@/market-data/utils';
 
 import { YahooFinanceService } from './yahoo-finance.service';
 
 // Mock yahoo-finance2
+const { quoteMock, yahooFinanceConstructorMock } = vi.hoisted(() => {
+  const quote: Mock = vi.fn();
+  const ctor: Mock = vi.fn().mockImplementation(() => ({
+    quote,
+  }));
+
+  return {
+    quoteMock: quote,
+    yahooFinanceConstructorMock: ctor,
+  };
+});
+
 vi.mock('yahoo-finance2', () => ({
-  default: {
-    quote: vi.fn(),
-  },
+  __esModule: true,
+  default: yahooFinanceConstructorMock,
 }));
 
 // Mock currency converter
@@ -18,13 +28,16 @@ vi.mock('@/market-data/utils', () => ({
   convertCurrency: vi.fn(),
 }));
 
-const mockYahooFinance = vi.mocked(yahooFinance);
 const mockConvertCurrency = vi.mocked(convertCurrency);
 
 describe('YahooFinanceService', () => {
   let service: YahooFinanceService;
 
   beforeEach(async () => {
+    quoteMock.mockReset();
+    mockConvertCurrency.mockReset();
+    yahooFinanceConstructorMock.mockClear();
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [YahooFinanceService],
     }).compile();
@@ -33,7 +46,7 @@ describe('YahooFinanceService', () => {
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('getProviderName', () => {
@@ -52,11 +65,11 @@ describe('YahooFinanceService', () => {
     it('should return empty array for empty symbols', async () => {
       const result = await service.fetchAssetPrices([], 'USD');
       expect(result).toEqual([]);
-      expect(mockYahooFinance.quote).not.toHaveBeenCalled();
+      expect(quoteMock).not.toHaveBeenCalled();
     });
 
     it('should fetch asset prices successfully for USD', async () => {
-      mockYahooFinance.quote.mockResolvedValueOnce({
+      quoteMock.mockResolvedValueOnce({
         regularMarketPrice: 150.25,
         currency: 'USD',
       });
@@ -70,11 +83,11 @@ describe('YahooFinanceService', () => {
           currency: 'USD',
         },
       ]);
-      expect(mockYahooFinance.quote).toHaveBeenCalledWith('AAPL');
+      expect(quoteMock).toHaveBeenCalledWith('AAPL');
     });
 
     it('should handle missing quote data', async () => {
-      mockYahooFinance.quote.mockResolvedValueOnce(null);
+      quoteMock.mockResolvedValueOnce(null);
 
       const result = await service.fetchAssetPrices(['INVALID'], 'USD');
 
@@ -82,7 +95,7 @@ describe('YahooFinanceService', () => {
     });
 
     it('should handle API errors and return empty array', async () => {
-      mockYahooFinance.quote.mockRejectedValueOnce(new Error('Yahoo Finance error'));
+      quoteMock.mockRejectedValueOnce(new Error('Yahoo Finance error'));
 
       const result = await service.fetchAssetPrices(['ERROR_SYMBOL'], 'USD');
 
@@ -90,7 +103,7 @@ describe('YahooFinanceService', () => {
     });
 
     it('should handle missing price in quote', async () => {
-      mockYahooFinance.quote.mockResolvedValueOnce({
+      quoteMock.mockResolvedValueOnce({
         currency: 'USD',
         // regularMarketPrice is missing
       });
@@ -107,7 +120,7 @@ describe('YahooFinanceService', () => {
     });
 
     it('should handle currency conversion', async () => {
-      mockYahooFinance.quote.mockResolvedValueOnce({
+      quoteMock.mockResolvedValueOnce({
         regularMarketPrice: 150.25,
         currency: 'USD',
       });
@@ -126,7 +139,7 @@ describe('YahooFinanceService', () => {
     });
 
     it('should handle currency conversion failure', async () => {
-      mockYahooFinance.quote.mockResolvedValueOnce({
+      quoteMock.mockResolvedValueOnce({
         regularMarketPrice: 150.25,
         currency: 'USD',
       });
@@ -144,7 +157,7 @@ describe('YahooFinanceService', () => {
     });
 
     it('should handle multiple symbols', async () => {
-      mockYahooFinance.quote
+      quoteMock
         .mockResolvedValueOnce({
           regularMarketPrice: 150.25,
           currency: 'USD',

@@ -30,6 +30,8 @@ export default defineConfig({
         'https',
         'url',
         'querystring',
+        'process',
+        /^node:/,
         // All dependencies should be external for Node.js apps
         /^@nestjs/,
         /^rxjs/,
